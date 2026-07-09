@@ -541,7 +541,7 @@ function popupInfoHelp() {
     $('#infoPopupContent').html(`
     <p>Use the dropdown to select a region, pan and zoom to explore, and click nodes for detailed information. Zoom in to view node names.</p><br />
     <p><span class="headerData">About this project:</span> (scroll down)</p><br />
-    <p>This project is a network graph visualization of Philippine elected officials from 2004-2019. It aims to illustrate the prevalence of potential political dynasties in the country by mapping relationships between politicians sharing the same last name.</p><br />
+    <p>This project is a network graph visualization of Philippine elected officials from 2004-2016. It aims to illustrate the prevalence of potential political dynasties in the country by mapping relationships between politicians sharing the same last name.</p><br />
     <p>Red nodes (circles) represent surnames, blue nodes represent individual politicians, and green nodes represent provinces. At a glance, potential political dynasties may be identified by the size of surname nodes, which corresponds to the number of politicians sharing that surname within the selected region.</p><br />
     <p>Edges (lines) connect surnames to their respective politicians and provinces to the politicians operating within them.</p><br />
     <p>Nodes and edges start out randomized, and coalesce into position using the Force Atlas 2 layout by default. Start or Stop Layout animations by pressing the "START/STOP" layout buttons.</p><br />
