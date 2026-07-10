@@ -10,10 +10,15 @@ This project uses [Node.js](https://nodejs.org), [TypeScript](http://www.typescr
 
 1. Install Node.js/NPM
 2. Type ```npm install``` in console.
-3. Change ```base: '/officials_network_graph/'``` in vite.config.ts to your remote server relative path.
-4. Type ```npm run build``` in console.
-5. Type ```npx vite``` in console. It will give a localhost address you can test locally on.
+3. Type ```npm run build``` in console.
+4. Type ```npx vite``` in console. It will give a localhost address you can test locally on.
 
 ### Deployment
-Upload the contents of the ```./dist``` folder to your server.
+This repository is configured for Cloudflare Workers Static Assets via ```wrangler.jsonc```.
+
+```bash
+npm run deploy
+```
+
+The Cloudflare deployment serves the Vite build output from ```./dist``` and uses SPA fallback handling for direct route loads.
 
