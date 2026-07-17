@@ -267,7 +267,6 @@ function processGraphData() {
     totalNodes = 0;
     parsedNodes = 0;
     parsedLastnames = 0;
-    let politicianIndex = politicianCount;
 
     let i = 0;
     for (i = 0; i < politicianCount; i++) {
