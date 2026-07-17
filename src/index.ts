@@ -19,6 +19,8 @@ let noverlap: InstanceType<typeof NoverlapLayout> | null = null;
 
 let simulationRunning = true;
 let noverlapRunning = false;
+let animationTimeoutId: number | null = null;
+let animationTimeoutDuration: number = 15000;
 
 const mapRadius = 1000;
 
@@ -224,7 +226,7 @@ async function loadPoverty() {
                     'Position': winners[i][j]['position'],
                     'Year': electionYears[i],
                 };
-                politicianIndex ++;
+                politicianIndex++;
             }
         }
 
@@ -401,6 +403,18 @@ function setLayout() {
     layout = new FA2Layout(graph, { settings: sensibleSettings });
     noverlap = new NoverlapLayout(graph, { settings: { margin: 10, ratio: 2 } });
     layout.start();
+    animationTimeoutId = window.setTimeout(stopAnimations, animationTimeoutDuration);
+}
+
+function stopAnimations() {
+    $('#simulationToggle').text('START Force Atlas 2');
+    $('#noverlapToggle').text('START No Overlap');
+
+    layout?.stop();
+    noverlap?.stop();
+
+    simulationRunning = false;
+    noverlapRunning = false;
 }
 
 function processDynasty() {
@@ -425,6 +439,7 @@ function resetGraph() {
 }
 
 function resetAndReload() {
+    clearTimeout(animationTimeoutId!);
     resetGraph();
     processGraphData();
     populateGraph();
@@ -439,6 +454,7 @@ function resetAndReload() {
     layout!.start();
     $("#lastNameHolder").scrollTop(0);
     console.log('Graph reloaded successfully');
+    animationTimeoutId = window.setTimeout(stopAnimations, animationTimeoutDuration);
 }
 
 // --- CAMERA ---
@@ -454,6 +470,7 @@ function panToNode(nodeId: string) {
 // --- EVENT HANDLERS ---
 
 function onToggleSimulation() {
+    clearTimeout(animationTimeoutId!);
     if (simulationRunning) {
         simulationRunning = false;
         $('#simulationToggle').text('START Force Atlas 2');
@@ -468,6 +485,7 @@ function onToggleSimulation() {
 }
 
 function onNoverlap() {
+    clearTimeout(animationTimeoutId!);
     simulationRunning = false;
     $('#simulationToggle').text('START Force Atlas 2');
     layout!.stop();
