@@ -523,7 +523,7 @@ function getNodeData(event: { node: string }) {
                 const fn = dynasty[Number(fnAttrs['index'])]!;
                 popupContents += ` -${fnAttrs['label']} ${d['Last_Name']},`;
                 if (fn['fat'] == 1) popupContents += '<span class="fat">*</span>';
-                popupContents += ` ${fn['Position']}, ${fn['Year']}: ${fn['Municipality_City']}<br />`;
+                popupContents += ` ${fn['Position']}, ${fn['Year']}: ${fn['Municipality_City']}, ${fn['Province']}<br />`;
             }
             break;
 
