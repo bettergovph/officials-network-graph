@@ -4,6 +4,8 @@ A network graph visualization of regional elected Philippine officials from 2004
 
 Can be used to spot potential political dynasties at a glance by looking at the surname (red) nodes by size. Surname node sizes are proportional to the number of elected individual officials with the same surnames in a region.
 
+View the project at [https://officials.bettergov.ph](https://officials.bettergov.ph).
+
 This project uses [Node.js](https://nodejs.org), [TypeScript](http://www.typescriptlang.org/), [Sigma.js](https://www.sigmajs.org/), and [Vite](https://vite.dev).
 
 ### Installation and Build
