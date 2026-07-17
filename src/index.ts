@@ -606,7 +606,7 @@ function popupInfoHelp() {
     <p>Red nodes (circles) represent surnames, blue nodes represent individual politicians, and green nodes represent provinces. At a glance, potential political dynasties may be identified by the size of surname nodes, which corresponds to the number of politicians sharing that surname within the selected region.</p><br />
     <p>Edges (lines) connect surnames to their respective politicians and provinces to the politicians operating within them.</p><br />
     <p>Nodes and edges start out randomized, and coalesce into position using the Force Atlas 2 layout by default. Start or Stop Layout animations by pressing the "START/STOP" layout buttons.</p><br />
-    <p>Data is sourced from the the Ateneo School of Government and the Inclusive Democracy Participate project, as well as the Philippine Statistics Authority.</p><br />
+    <p>Data is sourced from the the Ateneo Policy Center and the Inclusive Democracy Participate project, the Open Halalan Philippine National and Local Election Dataset, as well as the Philippine Statistics Authority.</p><br />
     <p><span class="headerData">Limitations:</span></p>
     <ul id="listLimitations" type="1">
         <li>Data may not capture all political relationships or nuances.</li>
