@@ -216,14 +216,17 @@ async function loadPoverty() {
             winners[i] = winnerData ?? [];
 
             // Map 2019+ winner data to dynasty array
-            for (let j = 0; j < winners[i]!.length; j++) {
+            const yearWinners = winners[i] ?? [];
+            for (let j = 0; j < yearWinners.length; j++) {
+                const winner = yearWinners[j];
+                if (winner === undefined) continue;
                 dynasty[politicianIndex] = {
-                    'Last_Name': winners[i][j]['last_name'],
-                    'First_Name': winners[i][j]['first_name'],
-                    'Region': winners[i][j]['region'],
-                    'Province': winners[i][j]['province'],
-                    'Municipality_City': winners[i][j]['city'],
-                    'Position': winners[i][j]['position'],
+                    'Last_Name': winner['last_name'],
+                    'First_Name': winner['first_name'],
+                    'Region': winner['region'],
+                    'Province': winner['province'],
+                    'Municipality_City': winner['city'],
+                    'Position': winner['position'],
                     'Year': electionYears[i],
                 };
                 politicianIndex++;
