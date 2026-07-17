@@ -1,6 +1,6 @@
-## Network Graph of Elected Philippine Officials, 2004-2016
+## Network Graph of Elected Philippine Officials, 2004-2025
 
-A network graph visualization of regional elected Philippine officials from 2004-2016.
+A network graph visualization of regional elected Philippine officials from 2004-2025.
 
 Can be used to spot potential political dynasties at a glance by looking at the surname (red) nodes by size. Surname node sizes are proportional to the number of elected individual officials with the same surnames in a region.
 
