@@ -125,16 +125,20 @@ const unit = () => S.year === 'all' ? 'officials' : 'seats';
 const perUnit = () => S.year === 'all' ? 'people' : 'seats';
 const personHref = (r: Row) => r.person_id ? hrefPerson(slug(r.province), r.person_id) : '';
 
-type Level = 'country' | 'region' | 'province' | 'town';
+type Level = 'country' | 'region' | 'province' | 'town' | 'bloc';
 function renderCrumbs() {
     const items: { label: string; level: Level }[] = [{ label: 'Philippines', level: 'country' }];
     if (S.region) items.push({ label: regionLabel(S.region), level: 'region' });
     if (S.province) items.push({ label: title(S.province), level: 'province' });
     if (S.town) items.push({ label: title(S.town), level: 'town' });
+    const sel = S.sel ? CLBY[S.sel] : undefined;
+    if (sel) items.push({ label: title(sel.sur), level: 'bloc' });
     el('crumbs').innerHTML = items.map((it, i) => i === items.length - 1 ? `<span>${it.label}</span>` : `<button type="button" data-level="${it.level}">${it.label}</button>`).join('<i>›</i>');
     el('rankmeta').textContent = yearLabel();
 }
 function goLevel(level: Level) {
+    S.sel = null;
+    if (level === 'town') { renderRank(); if (S.dir === 'atlas') void renderMap(); drawGraph(); return; }
     if (level === 'country') { if (heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return; S.region = ''; store('dyn.region', ''); el<HTMLSelectElement>('region').value = ''; setProvince(''); }
     else if (level === 'region') setProvince('');
     else if (level === 'province') setTown('');
@@ -154,6 +158,8 @@ function renderTownPanel() {
 }
 function renderRank() {
     renderCrumbs();
+    const c = S.sel ? CLBY[S.sel] : undefined;
+    if (c) { renderBlocPanel(c); return; }
     if (S.town && PROV[S.province]) { renderTownPanel(); return; }
     const list = scoped();
     const provs = Object.values(PROV).filter(p => (!S.region || p.region === S.region) && (!S.province || p.name === S.province));
@@ -180,19 +186,18 @@ function renderTable() {
         + `</tbody></table>` + (list.length > S.limit ? `<button class="more" id="more">Show ${Math.min(150, list.length - S.limit)} more of ${fmt(list.length)}</button>` : '');
 }
 
-function renderDetail() {
-    const host = el('detailbody');
-    const c = S.sel ? CLBY[S.sel] : undefined;
-    if (!c) { host.innerHTML = `<div class="empty"><b>Pick a surname</b>Click a bloc in the list, table, map or graph to see every elected official who carries it, the posts they hold, and related surnames.</div>`; return; }
+/** Top panel when a surname is selected: the bloc's facts, every official carrying it, and related surnames. */
+function renderBlocPanel(c: Cluster) {
     const p = PROV[c.prov]!;
     const all = S.year === 'all';
     const posCounts = d3.rollup(c.members, v => v.length, m => topPosition(m));
     const posKeys = POSORDER.filter(k => posCounts.get(k));
     const nm = (r: Person) => { const label = `${title(r.first_name)}${r.middle_name ? ' <span style="color:var(--mute);font-weight:400">' + title(r.middle_name) + '</span>' : ''} ${title(r.last_name)}`; const href = personHref(latest(r)); return (href ? `<a href="${href}">${label}</a>` : label) + (r.title ? ' <small style="color:var(--faint)">' + r.title + '</small>' : ''); };
-    host.innerHTML = `<div class="dhead"><div class="kicker"><span>${title(c.prov)} · ${regionLabel(c.region)}</span>${c.poverty != null ? `<span style="margin-left:auto">poverty ${c.poverty}%</span>` : ''}</div><h3>${title(c.sur)}<em>${c.n} ${perUnit()}</em></h3>
-  <div class="facts"><div><b>${pct1(c.share)}</b><span>of ${p.total} ${unit()} in province</span></div><div><b style="color:${c.nmid ? 'var(--amber)' : 'inherit'}">${c.nmid}</b><span>via middle name</span></div>${all ? `<div><b>${c.terms}</b><span>terms ${c.years.join(', ')}</span></div>` : ''}<div><b>${fmt(c.votes)}</b><span>votes, latest term</span></div><div><b>${c.parties.length}</b><span>${c.parties.length === 1 ? 'party' : 'parties'}</span></div></div>
-  <div class="pos">${posKeys.map(k => `<i style="flex:${posCounts.get(k)};opacity:${1 - POSORDER.indexOf(k) * .1}" title="${k}"></i>`).join('')}</div><div class="poslbl">${posKeys.map(k => `<span>${posCounts.get(k)} ${POSSHORT[k] ?? k}</span>`).join('')}</div></div>
-  <div class="body tree" style="padding-top:0"><h4>Officials</h4>${c.members.map(m => `<div class="person" data-via="${m.via}"><div class="who">${nm(m)}${m.via === 'middle' ? ' <span class="via">via middle name</span>' : ''}</div><div class="v">${latest(m).votes ? fmt(+latest(m).votes) : '–'}<small>${latest(m).party || '—'}</small></div>${m.terms.map(r => `<div class="what">${all ? `<span class="yr">${r.year}</span> ` : ''}<b>${title(r.position)}</b>${r.city ? ' · ' + title(r.city) : ''}${r.district ? ' · ' + title(r.district) + ' dist.' : ''}</div>`).join('')}</div>`).join('')}
+    el('stats').innerHTML = `<div class="stat"><b>${c.n}</b><span>${perUnit()} · ${pct1(c.share)} of ${p.total} in ${title(c.prov)}</span></div><div class="stat"><b style="color:${c.nmid ? 'var(--amber)' : 'inherit'}">${c.nmid}</b><span>via middle name</span></div><div class="stat"><b>${fmt(c.votes)}</b><span>votes, latest term · ${c.parties.length} ${c.parties.length === 1 ? 'party' : 'parties'}</span></div>`;
+    el('rankbody').innerHTML = `<div class="tree" style="padding:4px 0 8px">
+  <div class="kicker" style="display:flex;gap:8px"><span>${title(c.prov)} · ${regionLabel(c.region)}${all ? ` · ${c.terms} terms ${c.years.join(', ')}` : ''}</span>${c.poverty != null ? `<span style="margin-left:auto">poverty ${c.poverty}%</span>` : ''}</div>
+  <div class="pos">${posKeys.map(k => `<i style="flex:${posCounts.get(k)};opacity:${1 - POSORDER.indexOf(k) * .1}" title="${k}"></i>`).join('')}</div><div class="poslbl">${posKeys.map(k => `<span>${posCounts.get(k)} ${POSSHORT[k] ?? k}</span>`).join('')}</div>
+  <h4>Officials</h4>${c.members.map(m => `<div class="person" data-via="${m.via}"><div class="who">${nm(m)}${m.via === 'middle' ? ' <span class="via">via middle name</span>' : ''}</div><div class="v">${latest(m).votes ? fmt(+latest(m).votes) : '–'}<small>${latest(m).party || '—'}</small></div>${m.terms.map(r => `<div class="what">${all ? `<span class="yr">${r.year}</span> ` : ''}<b>${title(r.position)}</b>${r.city ? ' · ' + title(r.city) : ''}${r.district ? ' · ' + title(r.district) + ' dist.' : ''}</div>`).join('')}</div>`).join('')}
   ${c.related.length ? `<h4>Linked surnames <span style="text-transform:none;letter-spacing:0">(share an official, same province)</span></h4><div class="chips">${c.related.map(s => `<button class="chip" data-id="${c.prov + '|' + s}">${title(s)}<small>${CLBY[c.prov + '|' + s]?.n ?? ''}</small></button>`).join('')}</div>` : ''}
   ${c.elsewhere.length ? `<h4>Same surname elsewhere</h4><div class="chips">${c.elsewhere.slice(0, 12).map(o => `<button class="chip" data-id="${o.id}">${title(o.prov)}<small>${o.n}</small></button>`).join('')}</div>` : ''}</div>`;
 }
@@ -406,8 +411,8 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; renderDetail(); if (S.town) renderRank(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
-function setTown(t: string) { S.town = t; renderRank(); renderDetail(); if (S.dir === 'atlas') void renderMap(); }
+function select(id: string) { S.sel = id; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function setTown(t: string) { S.town = t; S.sel = null; renderRank(); if (S.dir === 'atlas') void renderMap(); }
 function setProvince(p: string) {
     S.province = p; S.town = '';
     if (p) { const prov = PROV[p]; if (prov) { S.region = prov.region; el<HTMLSelectElement>('region').value = S.region; } }
@@ -427,8 +432,7 @@ function refresh(regraph: boolean) {
     renderRank(); renderTable();
     if (S.dir === 'atlas') void renderMap();
     if (S.dir === 'network') { ensureCanvas(); if (regraph || !sim) buildGraph(); else drawGraph(); }
-    if (S.sel && !CLBY[S.sel]) S.sel = null;
-    renderDetail();
+    if (S.sel && !CLBY[S.sel]) { S.sel = null; renderRank(); }
 }
 function setDir(d: Dir) { S.dir = d; document.body.dataset['dir'] = d; document.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === d))); requestAnimationFrame(() => refresh(true)); }
 function clearScope() { S.province = ''; S.town = ''; S.region = ''; el<HTMLSelectElement>('region').value = ''; el('provpill').hidden = true; }
@@ -448,7 +452,6 @@ const MARKUP = `<div class="dyn">
   <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click surname</div></section>
   <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
-  <section class="panel" id="detail"><div id="detailbody" style="display:flex;flex-direction:column;min-height:0;height:100%"></div></section>
 </div>
 <div class="dyn-foot"><span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name. Local posts only. Shared names may not mean kinship.</span></div>
 <div class="spin" id="spin" hidden>loading winners…</div>
@@ -483,9 +486,8 @@ export function mountDynasties(root: HTMLElement): () => void {
     });
     dyn.querySelector('#minseg')!.addEventListener('click', e => { const b = closestButton(e); if (!b || !b.dataset['min']) return; S.min = +b.dataset['min']; dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); build(); S.limit = 150; refresh(true); });
     dyn.querySelector<HTMLInputElement>('#q')!.addEventListener('input', e => { S.q = (e.target as HTMLInputElement).value.trim().toUpperCase(); S.limit = 150; refresh(true); });
-    dyn.querySelector('#rankbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.rk, .chip'); if (b?.dataset['id']) select(b.dataset['id']); });
+    dyn.querySelector('#rankbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.rk, .chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id); });
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
-    dyn.querySelector('#detailbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
     window.addEventListener('resize', onResize);
     (async () => {
