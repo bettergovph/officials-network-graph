@@ -490,6 +490,8 @@ export function mountDynasties(root: HTMLElement): () => void {
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
     window.addEventListener('resize', onResize);
+    const onTheme = () => { if (!ALL.length) return; if (S.dir === 'atlas') { provLayer?.remove(); provLayer = null; regionLayer?.remove(); regionLayer = null; cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; } refresh(false); };
+    window.addEventListener('themechange', onTheme);
     (async () => {
         try {
             busy('loading…');
@@ -529,6 +531,7 @@ export function mountDynasties(root: HTMLElement): () => void {
     return () => {
         alive = false;
         window.removeEventListener('resize', onResize);
+        window.removeEventListener('themechange', onTheme);
         LM?.remove(); LM = null; provLayer = null; regionLayer = null; cityLayer = null; labelLayer = null; cityLayerFor = ''; mapLastKey = null; mapToken++;
         sim?.stop(); sim = null; gCanvas = null; gCtx = null; gHover = null;
         delete document.body.dataset['dir'];

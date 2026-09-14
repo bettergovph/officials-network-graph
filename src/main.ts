@@ -51,6 +51,19 @@ document.addEventListener('click', e => {
 });
 window.addEventListener('popstate', render);
 
+// Theme: dark by default, remembered per browser. Views that paint with canvas or Leaflet listen for 'themechange'.
+const themeBtn = document.getElementById('theme') as HTMLButtonElement;
+function applyTheme(t: 'dark' | 'light') {
+    if (t === 'light') document.documentElement.dataset['theme'] = 'light'; else delete document.documentElement.dataset['theme'];
+    themeBtn.textContent = t === 'light' ? '☀' : '☾';
+    try { localStorage.setItem('theme', t); } catch { /* ignore */ }
+    window.dispatchEvent(new Event('themechange'));
+}
+let storedTheme: string | null = null;
+try { storedTheme = localStorage.getItem('theme'); } catch { /* ignore */ }
+applyTheme(storedTheme === 'light' ? 'light' : 'dark');
+themeBtn.addEventListener('click', () => applyTheme(document.documentElement.dataset['theme'] === 'light' ? 'dark' : 'light'));
+
 const form = document.getElementById('topsearch') as HTMLFormElement;
 form.addEventListener('submit', e => {
     e.preventDefault();

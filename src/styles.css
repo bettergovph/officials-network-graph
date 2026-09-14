@@ -16,7 +16,8 @@
     --mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-body[data-dir="ledger"] {
+/* Light theme (toggle in the navbar) */
+:root[data-theme="light"] {
     --bg: #f3f1ec;
     --panel: #ffffff;
     --panel2: #f8f7f3;
@@ -181,7 +182,7 @@ body[data-dir="atlas"] #graph .legend { display: none }
 #map .body { background: var(--bg) }
 .leaflet-container { background: var(--bg); font-family: var(--sans) }
 .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.3) }
-body[data-dir="ledger"] .leaflet-tile-pane { filter: saturate(.2) brightness(1.03) }
+:root[data-theme="light"] .leaflet-tile-pane { filter: saturate(.2) brightness(1.03) }
 .leaflet-control-attribution { background: color-mix(in oklab, var(--bg) 85%, transparent) !important; color: var(--mute) !important; font: 10px var(--sans) }
 .leaflet-control-attribution a { color: var(--mute) !important }
 .leaflet-attribution-flag { display: inline !important; width: 1em; height: .6669em; vertical-align: baseline }
@@ -210,6 +211,8 @@ nav.topnav a:hover { color: var(--ink); text-decoration: none }
 nav.topnav a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--sur) }
 .topsearch { margin-left: auto }
 .topsearch input { width: 260px }
+#theme { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--mute); font-size: 15px; display: inline-flex; align-items: center; justify-content: center }
+#theme:hover { color: var(--ink); border-color: var(--ink) }
 main#view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto }
 body.full main#view { overflow: hidden }
 footer.site { padding: 8px 20px; border-top: 1px solid var(--line); font-size: 11px; color: var(--mute); background: var(--panel); flex: none }
