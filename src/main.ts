@@ -50,7 +50,7 @@ async function render() {
 
 document.addEventListener('click', e => {
     const a = (e.target as HTMLElement).closest('a');
-    if (!a || a.target === '_blank' || a.origin !== location.origin || e.metaKey || e.ctrlKey || e.shiftKey || a.hasAttribute('download')) return;
+    if (!a || a.target === '_blank' || a.origin !== location.origin || e.metaKey || e.ctrlKey || e.shiftKey || a.hasAttribute('download') || (a.getAttribute('href') ?? '').startsWith('#')) return;
     e.preventDefault();
     if (a.href !== location.href) history.pushState(null, '', a.href);
     render();

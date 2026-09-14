@@ -183,6 +183,7 @@ body[data-dir="atlas"] .person.locate:hover { background: color-mix(in oklab, va
 /* legend */
 .legend { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 4px; font: 500 11px var(--mono); color: var(--mute); z-index: 500; background: color-mix(in oklab, var(--bg) 80%, transparent); padding: 8px 10px; border-radius: 8px }
 .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle }
+.scroll-hint { display: none }
 body[data-dir="atlas"] #graph .legend { display: none }
 #graph canvas { display: block }
 
@@ -393,8 +394,17 @@ code { font-family: var(--mono); font-size: 11px; background: var(--panel2); pad
     #table .body { overflow-x: auto }
     body[data-dir="network"] #rank { position: static; width: auto; max-height: none; border-radius: 0; backdrop-filter: none; box-shadow: none; border: 0 }
     body[data-dir="network"] .legend { left: 16px }
-    .legend { font-size: 10px; max-width: 70vw }
+    .legend { font-size: 10px; flex-direction: row; flex-wrap: wrap; gap: 2px 10px; left: 10px; right: 10px; bottom: 10px; padding: 5px 8px; max-width: none }
+    .legend .long { display: none }
     .hint { display: none }
+    .scroll-hint { display: block; text-align: center; padding: 10px 14px; font: 500 12px var(--mono); color: var(--mute); background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-decoration: none }
+    /* the page scrolls as a whole on phones: footer follows the content instead of sticking */
+    html, body { height: auto; min-height: 100% }
+    #app { height: auto; min-height: 100vh }
+    main#view, body.full main#view { overflow: visible }
+    /* toolbar row 1: the view switch must never run under the filter */
+    .dyn-toolbar #review { min-width: 0; max-width: 100%; overflow-x: auto }
+    .dyn-toolbar #review button { padding: 0 8px; white-space: nowrap }
     input[type=search] { width: 140px }
     /* pages: tables scroll sideways instead of stretching the page */
     table.list, table.cands { display: block; overflow-x: auto; white-space: nowrap }

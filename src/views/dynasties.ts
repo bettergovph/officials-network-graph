@@ -345,7 +345,7 @@ async function renderMap() {
         } else cityLayer?.setStyle(cityStyle);
         cityLayer?.bringToFront();
         const noBloc = [...stats.values()].filter(v => v.dyn === 0).length;
-        el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no surname bloc · ${noBloc} of ${stats.size} towns</div><div><i style="background:transparent;border:2px solid ${ink}"></i>${S.sel ? 'towns where the selected surname holds seats; others faded' : 'click a town for details'}</div>`;
+        el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high<span class="long"> share of ${unit()} in surname blocs</span></div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no bloc<span class="long"> · ${noBloc} of ${stats.size} towns</span></div><div class="long"><i style="background:transparent;border:2px solid ${ink}"></i>${S.sel ? 'towns where the selected surname holds seats; others faded' : 'click a town for details'}</div>`;
     } else { cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; curCityStyle = null; }
     // camera
     const key = S.province || S.region;
@@ -356,7 +356,7 @@ async function renderMap() {
         else if (S.region) { const b = L.latLngBounds([]); provLayer.eachLayer(l => { const f = (l as L.Polygon).feature as Feature<Geometry, GeoProps> | undefined; if (f && PROV[f.properties.name]?.region === S.region) b.extend((l as L.Polygon).getBounds()); }); if (b.isValid()) bounds = b; }
         map.flyToBounds(bounds ?? COUNTRY_BOUNDS, { duration: .6, padding: [16, 16], maxZoom: S.province ? 10 : 8 });
     }
-    if (!S.province) el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no surname bloc</div><div><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>${S.sel ? 'provinces where the selected surname holds seats; others faded' : 'region boundary · click a province for its towns'}</div>`;
+    if (!S.province) el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high<span class="long"> share of ${unit()} in surname blocs</span></div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no<span class="long"> surname</span> bloc</div><div class="long"><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>${S.sel ? 'provinces where the selected surname holds seats; others faded' : 'region boundary · click a province for its towns'}</div>`;
 }
 
 // ----- network -----
@@ -512,6 +512,7 @@ const MARKUP = `<div class="dyn">
 <div class="dyn-main">
   <section class="panel" id="map"><div class="ph"><h2>Where dynasties hold seats</h2><small>color = share of seats in surname blocs · click a province for its towns</small></div><div class="body" style="padding:0"></div><div class="legend" id="maplegend"></div><div class="hint">click a province to focus</div></section>
   <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--ink)"></i>region · click to scope</div><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click a region, province or surname</div></section>
+  <a class="scroll-hint" href="#rank">Scroll for surname blocs and officials ↓</a>
   <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="seg ptabs" id="ptabs"><button type="button" data-tab="blocs" aria-pressed="true">Blocs</button><button type="button" data-tab="regions">Regions</button></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
 </div>
@@ -561,6 +562,7 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
     dyn.querySelector('#ptabs')!.addEventListener('click', e => { const b = closestButton(e); const tab = b?.dataset['tab']; if (tab === 'blocs' || tab === 'regions') { S.tab = tab; renderRank(); el('rankbody').scrollTop = 0; } });
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
+    dyn.querySelector('.scroll-hint')?.addEventListener('click', e => { e.preventDefault(); dyn.querySelector('#rank')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     window.addEventListener('resize', onResize);
     const onTheme = () => { if (!ALL.length) return; if (S.dir === 'atlas') { provLayer?.remove(); provLayer = null; regionLayer?.remove(); regionLayer = null; cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; } refresh(false); };
     window.addEventListener('themechange', onTheme);
