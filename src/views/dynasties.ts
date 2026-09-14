@@ -456,10 +456,12 @@ function setProvince(p: string) {
     refresh(true);
 }
 /** Mirror the scope into the URL (replace, not push) so reloads and remounts keep it. */
+const VIEW_PATHS = new Set(['/', '/dynasties', '/atlas', '/network', '/ledger']);
 function syncUrl() {
-    if (location.pathname !== '/' && location.pathname !== '/dynasties') return;
+    if (!VIEW_PATHS.has(location.pathname)) return;
     const q = S.province && INDEX ? `?province=${INDEX.regions.flatMap(r => r.provinces).find(p => p.name === S.province)?.slug ?? slug(S.province)}` : S.region && INDEX ? `?region=${INDEX.regions.find(r => r.name === S.region)?.slug ?? slug(S.region)}` : '';
-    const next = location.pathname + q;
+    const path = S.dir === 'atlas' && (location.pathname === '/' || location.pathname === '/dynasties') ? location.pathname : `/${S.dir}`;
+    const next = path + q;
     if (next !== location.pathname + location.search) history.replaceState(null, '', next);
 }
 function refresh(regraph: boolean) {
@@ -469,7 +471,7 @@ function refresh(regraph: boolean) {
     if (S.dir === 'network') { ensureCanvas(); if (regraph || !sim) buildGraph(); else drawGraph(); }
     if (S.sel && !CLBY[S.sel]) { S.sel = null; renderRank(); }
 }
-function setDir(d: Dir) { S.dir = d; document.body.dataset['dir'] = d; document.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === d))); requestAnimationFrame(() => refresh(true)); }
+function setDir(d: Dir) { S.dir = d; document.body.dataset['dir'] = d; if (VIEW_PATHS.has(location.pathname)) history.pushState(null, '', `/${d}` + location.search); document.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === d))); requestAnimationFrame(() => refresh(true)); }
 function clearScope() { S.province = ''; S.town = ''; S.region = ''; el<HTMLSelectElement>('region').value = ''; el('provpill').hidden = true; }
 const closestButton = (e: Event) => (e.target as HTMLElement).closest('button');
 const onResize = () => { if (S.dir === 'atlas' && LM) LM.invalidateSize(); if (S.dir === 'network') drawGraph(); };
@@ -494,9 +496,9 @@ const MARKUP = `<div class="dyn">
 
 const HEAVY_WARNING = 'This builds every surname bloc in the country at once. The atlas copes with one election, but the network graph, the ledger, and all nine elections together can freeze the tab on slower devices.\n\nContinue?';
 
-export function mountDynasties(root: HTMLElement): () => void {
+export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => void {
     root.innerHTML = MARKUP;
-    S.dir = 'atlas';
+    S.dir = dir;
     document.body.dataset['dir'] = S.dir;
     const dyn = root.querySelector<HTMLElement>('.dyn')!;
     let alive = true;

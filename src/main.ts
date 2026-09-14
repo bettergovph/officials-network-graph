@@ -10,7 +10,8 @@ import { mountDynasties } from './views/dynasties';
 
 type View = (root: HTMLElement, params: string[], query: URLSearchParams) => void | Promise<void> | (() => void);
 const routes: { pattern: RegExp; view: View; nav?: string }[] = [
-    { pattern: /^\/$/, view: root => mountDynasties(root), nav: 'dynasties' },
+    { pattern: /^\/$/, view: root => mountDynasties(root, 'atlas'), nav: 'dynasties' },
+    { pattern: /^\/(atlas|network|ledger)\/?$/, view: (root, [d]) => mountDynasties(root, d as 'atlas' | 'network' | 'ledger'), nav: 'dynasties' },
     { pattern: /^\/(?:regional|map|regions)\/?$/, view: (root, _p, q) => regional(root, q), nav: 'regional' },
     { pattern: /^\/national(?:\/(\d{4}))?\/?$/, view: (root, [y]) => national(root, y), nav: 'national' },
     { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => regional(root, new URLSearchParams({ open: s! })), nav: 'regional' },
@@ -30,7 +31,7 @@ async function render() {
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const query = new URLSearchParams(location.search);
     if (cleanup) { cleanup(); cleanup = null; }
-    document.body.classList.toggle('full', path === '/' || path === '/dynasties');
+    document.body.classList.toggle('full', ['/', '/dynasties', '/atlas', '/network', '/ledger'].includes(path));
     for (const r of routes) {
         const m = path.match(r.pattern);
         if (!m) continue;
