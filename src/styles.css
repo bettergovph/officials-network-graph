@@ -12,6 +12,7 @@
     --ppl: #5b8def;
     --amber: #e6a23c;
     --none: #4c6a7a;
+    --win: #2fa36a;
     --sans: "Instrument Sans", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -30,6 +31,7 @@
     --prov: #1f8a80;
     --ppl: #3467d6;
     --none: #9fb6c2;
+    --win: #1f8a4c;
 }
 
 * { box-sizing: border-box }
@@ -276,9 +278,9 @@ table.cands tr:last-child td { border-bottom: 0 }
 table.list.compact td, table.list.compact th { padding: 5px 6px; font-size: 12px }
 th.num, td.num { text-align: right; font-family: var(--mono); font-size: 12px }
 tr.won td:first-child, tr.won td:nth-child(2) { font-weight: 600 }
-tr.won { background: color-mix(in oklab, var(--sur) 7%, transparent) }
+tr.won { background: color-mix(in oklab, var(--win) 9%, transparent) }
 .badge { font: 500 10px var(--mono); border-radius: 4px; padding: 2px 6px; letter-spacing: .04em; text-transform: uppercase }
-.badge.won { background: var(--sur); color: #fff }
+.badge.won { background: var(--win); color: #fff }
 .badge.lost { color: var(--faint); border: 1px solid var(--line) }
 .tag { font: 500 10px var(--mono); color: var(--mute); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: middle }
 .tag.warn { color: var(--amber); border-color: color-mix(in oklab, var(--amber) 50%, transparent) }
