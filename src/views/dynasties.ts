@@ -30,7 +30,7 @@ const store = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 const DIRS: Dir[] = ['atlas', 'network', 'ledger'];
 
 // Atlas is always the starting view; year and region are remembered.
-const S = { dir: 'atlas' as Dir, year: stored('dyn.year') ?? '', region: stored('dyn.region') ?? '', province: '', town: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
+const S = { dir: 'atlas' as Dir, tab: 'blocs' as 'blocs' | 'regions', year: stored('dyn.year') ?? '', region: stored('dyn.region') ?? '', province: '', town: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
 /** Whole-country scope is fine on the atlas for one election; the graph and ledger build every bloc at once. */
 const heavy = (dir = S.dir, region = S.region, year = S.year) => region === '' && (dir !== 'atlas' || year === 'all');
 let INDEX: IndexData | null = null;
@@ -156,8 +156,27 @@ function renderTownPanel() {
   ${blocs.length ? `<h4>Surnames with seats here <span style="text-transform:none;letter-spacing:0">(${S.min}+ seats in ${title(p.name)})</span></h4><div class="chips">${blocs.map(({ c, here }) => `<button class="chip" data-id="${c.id}" aria-current="${S.sel === c.id}">${title(c.sur)}<small>${here.length} here · ${c.n} in province</small></button>`).join('')}</div>` : `<div class="empty" style="padding:8px 0"><b>No surname bloc</b>No family name holds ${S.min}+ seats in ${title(p.name)} through officials of ${title(town)}.</div>`}
   <h4>Officials</h4>${people.map(q => `<div class="person" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}${p.covered.has(q.key) ? '' : ' <span class="mute">· no bloc</span>'}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
 }
+/** "Regions" tab: every region with its bloc share; the current region opens into its provinces. Click to scope. */
+function renderRegionsPanel() {
+    const provs = Object.values(PROV);
+    const regions = [...new Set(provs.map(p => p.region))].sort().map(name => {
+        const ps = provs.filter(p => p.region === name);
+        const seats = d3.sum(ps, p => p.total), dyn = d3.sum(ps, p => p.dyn), blocs = d3.sum(ps, p => p.clusters.length);
+        return { name, ps, seats, dyn, blocs, share: seats ? dyn / seats : 0 };
+    });
+    const seats = d3.sum(regions, r => r.seats), dyn = d3.sum(regions, r => r.dyn);
+    el('stats').innerHTML = `<div class="stat"><b>${regions.length}</b><span>regions · ${provs.length} provinces</span></div><div class="stat"><b>${seats ? pct(dyn / seats) : '–'}</b><span>of ${fmt(seats)} ${unit()} in blocs</span></div><div class="stat"><b>${fmt(d3.sum(regions, r => r.blocs))}</b><span>surname blocs (${S.min}+ seats)</span></div>`;
+    const maxShare = d3.max(regions, r => r.share) || 1;
+    const row = (cls: string, attr: string, label: string, sub: string, share: number, n: number, current: boolean) =>
+        `<button class="rk ${cls}" ${attr} aria-current="${current}"><i></i><div class="nm">${label}<small>${sub}</small></div><div class="n">${pct(share)}<small> · ${n} blocs</small></div><div class="bar"><i style="width:${share / maxShare * 100}%"></i></div></button>`;
+    el('rankbody').innerHTML = regions.map(r => row('rgn', `data-region="${r.name}"`, regionLabel(r.name), `${r.ps.length} provinces · ${fmt(r.seats)} ${unit()}`, r.share, r.blocs, r.name === S.region && !S.province)
+        + (r.name === S.region ? `<div class="sub">${[...r.ps].sort((a, b) => b.share - a.share).map(p => row('prv', `data-province="${p.name}"`, title(p.name), `${fmt(p.total)} ${unit()}${p.poverty != null ? ` · poverty ${p.poverty}%` : ''}`, p.share, p.clusters.length, p.name === S.province)).join('')}</div>` : '')).join('')
+        || '<div class="empty">No seats in this election.</div>';
+}
 function renderRank() {
     renderCrumbs();
+    document.querySelectorAll<HTMLButtonElement>('#ptabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['tab'] === S.tab)));
+    if (S.tab === 'regions') { renderRegionsPanel(); return; }
     const c = S.sel ? CLBY[S.sel] : undefined;
     if (c) { renderBlocPanel(c); return; }
     if (S.town && PROV[S.province]) { renderTownPanel(); return; }
@@ -418,14 +437,14 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function select(id: string) { S.sel = id; S.tab = 'blocs'; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
 function setRegion(r: string) {
     if (r === '' && heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return;
     S.region = r; S.province = ''; S.town = ''; S.sel = null;
     el<HTMLSelectElement>('region').value = r; el('provpill').hidden = true; store('dyn.region', r);
     refresh(true);
 }
-function setTown(t: string) { S.town = t; S.sel = null; renderRank(); if (S.dir === 'atlas') void renderMap(); }
+function setTown(t: string) { S.town = t; S.sel = null; if (t) S.tab = 'blocs'; renderRank(); if (S.dir === 'atlas') void renderMap(); }
 function setProvince(p: string) {
     S.province = p; S.town = '';
     if (p) { const prov = PROV[p]; if (prov) { S.region = prov.region; el<HTMLSelectElement>('region').value = S.region; } }
@@ -463,7 +482,7 @@ const MARKUP = `<div class="dyn">
 <div class="dyn-main">
   <section class="panel" id="map"><div class="ph"><h2>Where dynasties hold seats</h2><small>color = share of seats in surname blocs · click a province for its towns</small></div><div class="body" style="padding:0"></div><div class="legend" id="maplegend"></div><div class="hint">click a province to focus</div></section>
   <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--ink)"></i>region · click to scope</div><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click a region, province or surname</div></section>
-  <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
+  <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="seg ptabs" id="ptabs"><button type="button" data-tab="blocs" aria-pressed="true">Blocs</button><button type="button" data-tab="regions">Regions</button></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
 </div>
 <div class="dyn-foot"><span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name. Local posts only. Shared names may not mean kinship. <a href="/about">How this is built</a></span></div>
@@ -499,7 +518,13 @@ export function mountDynasties(root: HTMLElement): () => void {
     });
     dyn.querySelector('#minseg')!.addEventListener('click', e => { const b = closestButton(e); if (!b || !b.dataset['min']) return; S.min = +b.dataset['min']; dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); build(); S.limit = 150; refresh(true); });
     dyn.querySelector<HTMLInputElement>('#q')!.addEventListener('input', e => { S.q = (e.target as HTMLInputElement).value.trim().toUpperCase(); S.limit = 150; refresh(true); });
-    dyn.querySelector('#rankbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.rk, .chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id); });
+    dyn.querySelector('#rankbody')!.addEventListener('click', e => {
+        const t = e.target as HTMLElement;
+        const rg = t.closest<HTMLElement>('.rgn[data-region]'); if (rg) { const r = rg.dataset['region']!; setRegion(r === S.region && !S.province ? '' : r); return; }
+        const pv = t.closest<HTMLElement>('.prv[data-province]'); if (pv) { S.tab = 'blocs'; setProvince(pv.dataset['province']!); return; }
+        const b = t.closest<HTMLElement>('.rk, .chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id);
+    });
+    dyn.querySelector('#ptabs')!.addEventListener('click', e => { const b = closestButton(e); const tab = b?.dataset['tab']; if (tab === 'blocs' || tab === 'regions') { S.tab = tab; renderRank(); el('rankbody').scrollTop = 0; } });
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
     window.addEventListener('resize', onResize);

@@ -75,7 +75,12 @@ input[type=search] { width: 200px }
 .ph h2 { margin: 0; font-size: 13px; font-weight: 600 }
 .ph small { font: 500 11px var(--mono); color: var(--mute) }
 .ph .sp { margin-left: auto }
-#rank > .ph { padding: 14px 16px 10px; align-items: center }
+#rank > .ph { padding: 14px 16px 8px; align-items: center }
+.ptabs { margin: 0 16px 10px; flex: none; align-self: flex-start }
+.ptabs button { padding: 0 14px }
+.rk.rgn .nm { font-weight: 700 }
+.sub { padding: 2px 0 6px 14px; border-left: 2px solid var(--line); margin: 0 0 6px 14px }
+.sub .rk { padding: 5px 8px }
 .ph .crumbs { margin: 0; min-width: 0; gap: 10px; font: 500 15px var(--sans); letter-spacing: 0 }
 .ph .crumbs span { color: var(--ink); font-weight: 700; font-size: 20px; letter-spacing: -.01em }
 .ph .crumbs i { color: var(--faint); font-size: 16px }
