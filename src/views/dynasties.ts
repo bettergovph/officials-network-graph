@@ -261,9 +261,10 @@ async function renderMap() {
     const [provinces, regions] = await Promise.all([loadGeo('/data/geo/provinces.json.gz'), loadGeo('/data/geo/regions.json.gz')]);
     if (token !== mapToken || LM !== map) return;
     const ink = cssVar('--ink'), bg = cssVar('--bg'), none = cssVar('--none');
-    const ramp = d3.interpolateRgb(cssVar('--sur2'), cssVar('--sur'));
-    const col = (t: number) => ramp(t);
-    const fill = (dyn: number, t: number) => dyn > 0 ? ramp(t) : none;
+    // share of seats in blocs: green (low) through amber to red (high)
+    const ramp = d3.interpolateRgbBasis([cssVar('--win'), cssVar('--amber'), cssVar('--sur')]);
+    const col = (t: number) => ramp(Math.max(0, Math.min(1, t)));
+    const fill = (dyn: number, t: number) => dyn > 0 ? col(t) : none;
     const provs = Object.values(PROV);
     const maxShare = d3.max(provs, p => p.share) || .5;
     const inReg = (p: Province) => !S.region || p.region === S.region;
@@ -321,7 +322,7 @@ async function renderMap() {
         } else cityLayer?.setStyle(cityStyle);
         cityLayer?.bringToFront();
         const noBloc = [...stats.values()].filter(v => v.dyn === 0).length;
-        el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(0)}"></i>low share</div><div><i style="background:${none}"></i>no surname bloc · ${noBloc} of ${stats.size} towns</div><div><i style="background:transparent;border:2px solid ${ink}"></i>towns where the selected surname holds seats · click a town for details</div>`;
+        el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no surname bloc · ${noBloc} of ${stats.size} towns</div><div><i style="background:transparent;border:2px solid ${ink}"></i>${S.sel ? 'towns where the selected surname holds seats; others faded' : 'click a town for details'}</div>`;
     } else { cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; }
     // camera
     const key = S.province || S.region;
@@ -332,7 +333,7 @@ async function renderMap() {
         else if (S.region) { const b = L.latLngBounds([]); provLayer.eachLayer(l => { const f = (l as L.Polygon).feature as Feature<Geometry, GeoProps> | undefined; if (f && PROV[f.properties.name]?.region === S.region) b.extend((l as L.Polygon).getBounds()); }); if (b.isValid()) bounds = b; }
         map.flyToBounds(bounds ?? COUNTRY_BOUNDS, { duration: .6, padding: [16, 16], maxZoom: S.province ? 10 : 8 });
     }
-    if (!S.province) el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(0)}"></i>low share</div><div><i style="background:${none}"></i>no surname bloc</div><div><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>region boundary · click a province for its towns</div>`;
+    if (!S.province) el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no surname bloc</div><div><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>${S.sel ? 'provinces where the selected surname holds seats; others faded' : 'region boundary · click a province for its towns'}</div>`;
 }
 
 // ----- network -----
