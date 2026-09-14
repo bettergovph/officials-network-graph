@@ -24,7 +24,7 @@ async function searchPeople(q: string, provinceName: (slug: string) => string): 
 
 export async function search(root: HTMLElement, q: URLSearchParams) {
     const query = (q.get('q') ?? '').trim();
-    const crumbsHtml = crumbs([{ label: 'Officials directory', href: '/officials' }, { label: 'Search' }]);
+    const crumbsHtml = crumbs([{ label: 'Officials search', href: '/officials' }, { label: 'Search' }]);
     root.innerHTML = `<div class="page">${crumbsHtml}<h1>Search</h1><form class="searchform" id="searchform"><input type="search" name="q" value="${esc(query)}" placeholder="Surname, or “Surname, First name”" autocomplete="off" autofocus><button class="btn" type="submit">Search</button></form><div id="results"></div></div>`;
     const results = root.querySelector<HTMLElement>('#results')!;
     if (query.length < 2) { results.innerHTML = '<p class="mute">Type at least two letters of a surname. Examples: <a href="/search?q=marcos">Marcos</a>, <a href="/search?q=duterte,%20sara">Duterte, Sara</a>, <a href="/search?q=cebu">Cebu</a>.</p>'; return; }

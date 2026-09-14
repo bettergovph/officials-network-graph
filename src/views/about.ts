@@ -14,7 +14,7 @@ export async function about(root: HTMLElement) {
   <ul class="prose">
     <li><b>Dynasties</b> groups officials in a province who share a surname as last name <em>or</em> middle name into a "bloc", and shows where blocs hold seats on an atlas, as a network, or in a ledger. The rule (2, 3 or 5 seats) sets how large a family name has to be to count.</li>
     <li><b>Regional</b> lists every region, province and town with each contest, its candidates, votes, vote shares, margins and results.</li>
-    <li><b>Officials Directory</b> holds one record per politician with their full election history, and lists repeat politicians by wins, runs and losses.</li>
+    <li><b>Officials Search</b> finds any politician by name and holds one record per politician with their full election history, and lists repeat politicians by wins, runs and losses.</li>
     <li><b>National</b> shows presidential, vice presidential, senate and party-list totals, and each province's share on its page.</li>
   </ul>
 

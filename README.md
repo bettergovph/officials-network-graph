@@ -8,7 +8,7 @@ View the project at [https://officials.bettergov.ph](https://officials.bettergov
 
 - **National**: presidential, vice presidential, senate and party-list totals per election, plus each province's share on its page.
 - **Regional**: national totals, then regions, provinces and towns. Every contest with its candidates, votes, vote share, margin and result.
-- **Officials Directory**: search, one record per politician with their full election history, and lists of repeat politicians by wins, runs and losses.
+- **Officials Search**: search, one record per politician with their full election history, and lists of repeat politicians by wins, runs and losses.
 - **Dynasties**: surname blocs per province in three views. The atlas colors provinces by the share of their seats held in blocs, draws region outlines, and shows a province's towns when it is focused. It opens on the latest election and one region; loading the whole country or every election is optional because it is heavy.
 - **Search**: politicians by surname or "Surname, First name", and places.
 

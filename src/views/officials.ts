@@ -10,7 +10,7 @@ export async function officials(root: HTMLElement, q: URLSearchParams) {
         const tab = (['wins', 'runs', 'losses'] as const).includes(q.get('by') as 'wins') ? q.get('by') as 'wins' | 'runs' | 'losses' : 'wins';
         const rows: TopRow[] = index.top[tab];
         root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/map' }, { label: 'Repeat politicians' }])}
-  <div class="page-h"><div><h1>Officials directory</h1><div class="mono mute">${index.totals.persons.toLocaleString('en-US')} people who ran for local office between ${index.years[0]} and ${index.years[index.years.length - 1]}; ${index.totals.repeat.toLocaleString('en-US')} ran more than once.</div></div></div>
+  <div class="page-h"><div><h1>Officials search</h1><div class="mono mute">${index.totals.persons.toLocaleString('en-US')} people who ran for local office between ${index.years[0]} and ${index.years[index.years.length - 1]}; ${index.totals.repeat.toLocaleString('en-US')} ran more than once.</div></div></div>
   <form class="searchform" id="dirsearch"><input type="search" name="q" placeholder="Find an official by surname, or “Surname, First name”" autocomplete="off"><button class="btn" type="submit">Search</button></form>
   <div class="page-h"><h2 style="margin:0">Repeat politicians <small class="mono mute">top 100</small></h2>
   <div class="seg tabs"><a href="/officials?by=wins" aria-pressed="${tab === 'wins'}">Most wins</a><a href="/officials?by=runs" aria-pressed="${tab === 'runs'}">Most runs</a><a href="/officials?by=losses" aria-pressed="${tab === 'losses'}">Most losses</a></div></div>
