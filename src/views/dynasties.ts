@@ -453,7 +453,7 @@ const MARKUP = `<div class="dyn">
   <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
 </div>
-<div class="dyn-foot"><span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name. Local posts only. Shared names may not mean kinship.</span></div>
+<div class="dyn-foot"><span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name. Local posts only. Shared names may not mean kinship. <a href="/about">How this is built</a></span></div>
 <div class="spin" id="spin" hidden>loading winners…</div>
 </div>`;
 

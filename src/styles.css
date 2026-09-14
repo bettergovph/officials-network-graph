@@ -217,8 +217,10 @@ nav.topnav a[aria-current="true"] { color: var(--ink); border-bottom-color: var(
 #theme:hover { color: var(--ink); border-color: var(--ink) }
 main#view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto }
 body.full main#view { overflow: hidden }
-footer.site { padding: 8px 20px; border-top: 1px solid var(--line); font-size: 11px; color: var(--mute); background: var(--panel); flex: none }
-body.full footer.site { display: none }
+footer.site { padding: 8px 20px; border-top: 1px solid var(--line); font-size: 11px; color: var(--mute); background: var(--panel); flex: none; display: flex; gap: 18px; flex-wrap: wrap; justify-content: space-between }
+footer.site .credit b { color: var(--ink) }
+footer.site a { color: var(--mute) }
+footer.site a:hover { color: var(--ink) }
 
 /* ---------- pages ---------- */
 .page { width: 100%; max-width: 1240px; margin: 0 auto; padding: 22px 24px 48px; flex: none }
