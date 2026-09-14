@@ -106,12 +106,7 @@ body[data-dir="ledger"] #table { grid-column: 1; grid-row: 1 }
 body[data-dir="ledger"] #rank { grid-column: 2; grid-row: 1 }
 body[data-dir="ledger"] #map, body[data-dir="ledger"] #graph { display: none }
 
-@media (max-width:900px) {
-    .dyn-main { grid-template-columns: 1fr !important; grid-template-rows: none !important; overflow: auto; display: flex; flex-direction: column }
-    .panel { min-height: 420px; flex: none }
-    body[data-dir="network"] #rank { position: static; width: auto; max-height: none; border-radius: 0; backdrop-filter: none; box-shadow: none; border: 0 }
-    input[type=search] { width: 140px }
-}
+
 
 /* stats */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 0 16px 8px; flex: none }
@@ -214,6 +209,8 @@ header.top { display: flex; align-items: center; gap: 22px; padding: 10px 20px; 
 .brand:hover { text-decoration: none }
 .brand b { font-size: 18px; font-weight: 700; letter-spacing: -.01em }
 .brand span { font: 500 12px var(--mono); color: var(--mute); letter-spacing: .02em }
+#menu { display: none; width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); flex-direction: column; justify-content: center; gap: 5px; align-items: center; margin-left: auto }
+#menu span { display: block; width: 18px; height: 2px; background: var(--ink); border-radius: 2px }
 nav.topnav { display: flex; gap: 22px; height: 34px; align-items: center }
 nav.topnav a { color: var(--mute); font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent }
 nav.topnav a:hover { color: var(--ink); text-decoration: none }
@@ -346,4 +343,44 @@ code { font-family: var(--mono); font-size: 11px; background: var(--panel2); pad
     .topsearch { margin-left: 0; width: 100% } .topsearch input { width: 100% }
     .page { padding: 16px 14px 40px }
     table.cands td, table.list td { padding: 6px 8px }
+}
+
+/* ---------- phones and small tablets (must stay last: it overrides the shell rules above) ---------- */
+@media (max-width:900px) {
+    /* header: brand + hamburger; nav, search and theme fold into a dropdown */
+    header.top { gap: 10px; padding: 10px 14px; position: relative; flex-wrap: nowrap; align-items: center }
+    #menu { display: flex }
+    nav.topnav, .topsearch, #theme { display: none }
+    body.nav-open nav.topnav { display: flex; flex-direction: column; align-items: stretch; gap: 0; height: auto; position: absolute; left: 0; right: 0; top: 100%; background: var(--panel); border-bottom: 1px solid var(--line); padding: 6px 14px 12px; z-index: 50; box-shadow: 0 12px 30px rgba(0,0,0,.35) }
+    body.nav-open nav.topnav a { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 16px }
+    body.nav-open nav.topnav a[aria-current="true"] { border-bottom-color: var(--line); color: var(--sur) }
+    body.nav-open .topsearch { display: block; position: absolute; left: 14px; right: 14px; top: calc(100% + 6px); z-index: 51; margin: 0 }
+    body.nav-open .topsearch input { width: 100% }
+    body.nav-open nav.topnav { padding-top: 52px }
+    body.nav-open #theme { display: inline-flex; position: absolute; right: 14px; top: calc(100% + 60px); z-index: 52 }
+    body.nav-open nav.topnav a:first-child { margin-top: 44px }
+    /* dynasties: a normal scrolling page on phones, map and graph with fixed heights */
+    body.full main#view { overflow: auto }
+    .dyn { flex: none }
+    .dyn-toolbar { gap: 8px 14px; padding: 10px 14px }
+    .dyn-toolbar .ctl { max-width: 100%; min-width: 0 }
+    .dyn-toolbar .seg { overflow-x: auto; max-width: calc(100vw - 90px) }
+    .dyn-toolbar .seg button { flex: none }
+    .dyn-toolbar #q { width: 100% }
+    .dyn-main { grid-template-columns: 1fr !important; grid-template-rows: none !important; display: flex; flex-direction: column; overflow: visible }
+    .panel { flex: none; overflow: visible; min-height: 0 }
+    #map, #graph { height: 62vh; min-height: 360px; overflow: hidden }
+    #rank, #table { height: auto }
+    #rank .body, #table .body { overflow: visible; flex: none }
+    #table .body { overflow-x: auto }
+    body[data-dir="network"] #rank { position: static; width: auto; max-height: none; border-radius: 0; backdrop-filter: none; box-shadow: none; border: 0 }
+    body[data-dir="network"] .legend { left: 16px }
+    .legend { font-size: 10px; max-width: 70vw }
+    .hint { display: none }
+    input[type=search] { width: 140px }
+    /* pages: tables scroll sideways instead of stretching the page */
+    table.list, table.cands { display: block; overflow-x: auto; white-space: nowrap }
+    .page-h { flex-direction: column; align-items: flex-start }
+    .tabs { max-width: 100%; overflow-x: auto }
+    .stats.wide { grid-template-columns: repeat(2, 1fr) }
 }

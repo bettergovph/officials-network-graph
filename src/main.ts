@@ -70,11 +70,19 @@ try { storedTheme = localStorage.getItem('theme'); } catch { /* ignore */ }
 applyTheme(storedTheme === 'light' ? 'light' : 'dark');
 themeBtn.addEventListener('click', () => applyTheme(document.documentElement.dataset['theme'] === 'light' ? 'dark' : 'light'));
 
+// Mobile menu: the nav, search and theme toggle fold behind a hamburger below 900px.
+const menuBtn = document.getElementById('menu') as HTMLButtonElement;
+const setMenu = (open: boolean) => { document.body.classList.toggle('nav-open', open); menuBtn.setAttribute('aria-expanded', String(open)); };
+menuBtn.addEventListener('click', () => setMenu(!document.body.classList.contains('nav-open')));
+document.querySelector('nav.topnav')!.addEventListener('click', e => { if ((e.target as HTMLElement).closest('a')) setMenu(false); });
+window.addEventListener('resize', () => { if (window.innerWidth > 900) setMenu(false); });
+
 const form = document.getElementById('topsearch') as HTMLFormElement;
 form.addEventListener('submit', e => {
     e.preventDefault();
     const q = (form.querySelector('input') as HTMLInputElement).value.trim();
     history.pushState(null, '', `/search?q=${encodeURIComponent(q)}`);
+    setMenu(false);
     render();
 });
 
