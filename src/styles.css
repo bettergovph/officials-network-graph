@@ -211,6 +211,8 @@ header.top { display: flex; align-items: center; gap: 22px; padding: 10px 20px; 
 .brand span { font: 500 12px var(--mono); color: var(--mute); letter-spacing: .02em }
 #menu { display: none; width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); flex-direction: column; justify-content: center; gap: 5px; align-items: center; margin-left: auto }
 #menu span { display: block; width: 18px; height: 2px; background: var(--ink); border-radius: 2px }
+/* on desktop the wrapper and tools are transparent to layout */
+.navwrap, .navtools { display: contents }
 nav.topnav { display: flex; gap: 22px; height: 34px; align-items: center }
 nav.topnav a { color: var(--mute); font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent }
 nav.topnav a:hover { color: var(--ink); text-decoration: none }
@@ -347,18 +349,19 @@ code { font-family: var(--mono); font-size: 11px; background: var(--panel2); pad
 
 /* ---------- phones and small tablets (must stay last: it overrides the shell rules above) ---------- */
 @media (max-width:900px) {
-    /* header: brand + hamburger; nav, search and theme fold into a dropdown */
-    header.top { gap: 10px; padding: 10px 14px; position: relative; flex-wrap: nowrap; align-items: center }
+    /* header: brand + hamburger; nav, search and theme fold into a dropdown above the map */
+    header.top { gap: 10px; padding: 10px 14px; position: relative; flex-wrap: nowrap; align-items: center; z-index: 1200 }
     #menu { display: flex }
-    nav.topnav, .topsearch, #theme { display: none }
-    body.nav-open nav.topnav { display: flex; flex-direction: column; align-items: stretch; gap: 0; height: auto; position: absolute; left: 0; right: 0; top: 100%; background: var(--panel); border-bottom: 1px solid var(--line); padding: 6px 14px 12px; z-index: 50; box-shadow: 0 12px 30px rgba(0,0,0,.35) }
-    body.nav-open nav.topnav a { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 16px }
-    body.nav-open nav.topnav a[aria-current="true"] { border-bottom-color: var(--line); color: var(--sur) }
-    body.nav-open .topsearch { display: block; position: absolute; left: 14px; right: 14px; top: calc(100% + 6px); z-index: 51; margin: 0 }
-    body.nav-open .topsearch input { width: 100% }
-    body.nav-open nav.topnav { padding-top: 52px }
-    body.nav-open #theme { display: inline-flex; position: absolute; right: 14px; top: calc(100% + 60px); z-index: 52 }
-    body.nav-open nav.topnav a:first-child { margin-top: 44px }
+    .navwrap { display: none }
+    body.nav-open .navwrap { display: flex; flex-direction: column; position: absolute; left: 0; right: 0; top: 100%; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 14px 12px; z-index: 1200; box-shadow: 0 12px 30px rgba(0,0,0,.35); gap: 4px }
+    .navtools { display: flex; gap: 8px; align-items: center; order: -1; margin-bottom: 6px }
+    .topsearch { margin: 0; flex: 1 }
+    .topsearch input { width: 100% }
+    #theme { flex: none }
+    nav.topnav { flex-direction: column; align-items: stretch; gap: 0; height: auto }
+    nav.topnav a { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 16px }
+    nav.topnav a:last-child { border-bottom: 0 }
+    nav.topnav a[aria-current="true"] { color: var(--sur) }
     /* dynasties: a normal scrolling page on phones, map and graph with fixed heights */
     body.full main#view { overflow: auto }
     .dyn { flex: none }

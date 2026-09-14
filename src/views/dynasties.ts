@@ -375,8 +375,9 @@ function fitGraph() {
     // The rank and detail panels float over the canvas on wide screens; fit into the gap between them.
     const cb = gCanvas.getBoundingClientRect();
     const rank = document.getElementById('rank')?.getBoundingClientRect(), det = document.getElementById('detail')?.getBoundingClientRect();
-    const insetL = rank && rank.left < cb.left + 40 && rank.right > cb.left ? Math.min(W / 2, rank.right - cb.left + 16) : 0;
-    const insetR = det && det.right > cb.right - 40 && det.left < cb.right ? Math.min(W / 2, cb.right - det.left + 16) : 0;
+    const overlaps = (r: DOMRect | undefined) => !!r && r.top < cb.bottom && r.bottom > cb.top; // panels only inset when they float over the canvas
+    const insetL = overlaps(rank) && rank!.left < cb.left + 40 && rank!.right > cb.left && rank!.right < cb.right - 100 ? Math.min(W / 2, rank!.right - cb.left + 16) : 0;
+    const insetR = overlaps(det) && det!.right > cb.right - 40 && det!.left < cb.right && det!.left > cb.left + 100 ? Math.min(W / 2, cb.right - det!.left + 16) : 0;
     const availW = Math.max(100, W - insetL - insetR);
     const k = Math.max(.02, Math.min(8, .88 * Math.min(availW / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0))));
     const t = d3.zoomIdentity.translate(-k * (x0 + x1) / 2 + (insetL - insetR) / 2, -k * (y0 + y1) / 2).scale(k);

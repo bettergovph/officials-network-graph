@@ -45,18 +45,22 @@
         <header class="top">
             <a class="brand" href="/"><b>Dynasties</b><span>by BetterGov.ph</span></a>
             <button id="menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="sitenav"><span></span><span></span><span></span></button>
-            <nav class="topnav" id="sitenav" aria-label="Sections">
-                <a href="/" data-nav="dynasties">Dynasties</a>
-                <a href="/national" data-nav="national">National</a>
-                <a href="/regional" data-nav="regional">Regional</a>
-                <a href="/officials" data-nav="officials">Officials Search</a>
-                <a href="/developers" data-nav="developers">API &amp; MCP</a>
-                <a href="/about" data-nav="about">About</a>
-            </nav>
-            <form id="topsearch" class="topsearch" role="search">
-                <input type="search" name="q" placeholder="Search a politician or place…" autocomplete="off" aria-label="Search">
-            </form>
-            <button id="theme" type="button" title="Switch light / dark" aria-label="Switch light or dark mode">☾</button>
+            <div class="navwrap" id="sitenav">
+                <nav class="topnav" aria-label="Sections">
+                    <a href="/" data-nav="dynasties">Dynasties</a>
+                    <a href="/national" data-nav="national">National</a>
+                    <a href="/regional" data-nav="regional">Regional</a>
+                    <a href="/officials" data-nav="officials">Officials Search</a>
+                    <a href="/developers" data-nav="developers">API &amp; MCP</a>
+                    <a href="/about" data-nav="about">About</a>
+                </nav>
+                <div class="navtools">
+                    <form id="topsearch" class="topsearch" role="search">
+                        <input type="search" name="q" placeholder="Search a politician or place…" autocomplete="off" aria-label="Search">
+                    </form>
+                    <button id="theme" type="button" title="Switch light / dark" aria-label="Switch light or dark mode">☾</button>
+                </div>
+            </div>
         </header>
         <main id="view"></main>
         <footer class="site">
