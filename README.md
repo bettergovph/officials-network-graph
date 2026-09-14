@@ -25,6 +25,10 @@ A *bloc* is the set of officials in one province who carry a surname as last nam
 - The site is a Vite + TypeScript single-page app (`src/`) using [D3](https://d3js.org/) and [Leaflet](https://leafletjs.com/) with OpenStreetMap tiles. Pages read the static shards; search uses the API when deployed and falls back to a static index otherwise.
 - `worker/index.ts` is a Cloudflare Worker serving the built site and a small JSON API over D1 (`/api/search`, `/api/person/:id`, `/api/contest/:id`, `/api/place/:province[/:city]`, `/api/persons`, `/api/stats`).
 
+### API and MCP
+
+The same Worker serves a read-only JSON API under `/api/v1` and a Model Context Protocol server at `/mcp`, both over the D1 database. See [docs/api.md](docs/api.md).
+
 ### Development
 
 ```bash
