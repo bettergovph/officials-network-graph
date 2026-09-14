@@ -1,18 +1,14 @@
-import { loadIndex, type PlaceProvince } from '../data';
-import { esc, fmt, title, regionLabel, hrefRegion, hrefProvince } from '../util';
+import { loadIndex } from '../data';
+import { esc, fmt, title, regionLabel, hrefProvince } from '../util';
 import { loading, failed } from './shared';
 
-const provinceTile = (p: PlaceProvince, year: number) => {
-    const y = p.years[String(year)];
-    return `<a class="tile" href="${hrefProvince(p.slug)}"><b>${esc(title(p.name))}</b><span class="mono">${p.cities.length} towns · ${fmt(y?.seats ?? p.seats)} seats${p.poverty != null ? ` · poverty ${p.poverty}%` : ''}</span></a>`;
-};
-
-/** Regional: national totals, then every region with its stats and province tiles. */
-export async function regional(root: HTMLElement) {
+/** Regional: national totals and one expandable table, region rows opening into their provinces. */
+export async function regional(root: HTMLElement, q: URLSearchParams) {
     loading(root);
     try {
         const index = await loadIndex();
         const latest = index.years[index.years.length - 1]!;
+        const open = new Set((q.get('open') ?? location.hash.replace(/^#/, '')).split(',').filter(Boolean));
         const rows = index.regions.map(r => {
             const seats = r.provinces.reduce((s, p) => s + (p.years[String(latest)]?.seats ?? 0), 0);
             const cands = r.provinces.reduce((s, p) => s + (p.years[String(latest)]?.candidacies ?? 0), 0);
@@ -24,11 +20,31 @@ export async function regional(root: HTMLElement) {
         });
         root.innerHTML = `<div class="page">
   <section class="hero compact"><div class="kicker">Philippines · ${index.years[0]}–${latest}</div><h1>Regions and provinces</h1>
-    <p>Every candidate for local office since ${index.years[0]}, by region, province and town. Looking for a person? Use the <a href="/officials">officials directory</a>. Seats and candidates below are for ${latest}; people are counted since ${index.years[0]}.</p>
+    <p>Every candidate for local office since ${index.years[0]}, by region, province and town. Expand a region to see its provinces; open a province for its towns and contests. Seats and candidates are for ${latest}; people are counted since ${index.years[0]}. Looking for a person? Use <a href="/officials">officials search</a>.</p>
     <div class="stats wide"><div class="stat"><b>${fmt(index.totals.persons)}</b><span>people</span></div><div class="stat"><b>${fmt(index.totals.candidacies)}</b><span>candidacies</span></div><div class="stat"><b>${fmt(index.totals.contests)}</b><span>contests</span></div><div class="stat"><b>${index.regions.length}</b><span>regions · ${index.totals.provinces} provinces</span></div><div class="stat"><b>${fmt(index.totals.cities)}</b><span>cities &amp; towns</span></div><div class="stat"><b>${index.years.length}</b><span>elections</span></div></div></section>
-  <table class="list regions"><thead><tr><th>Region</th><th class="num">Provinces</th><th class="num">Towns</th><th class="num">Seats</th><th class="num">Candidates</th><th class="num">People</th><th class="num">Avg poverty</th></tr></thead><tbody>
-  ${rows.map(({ r, seats, cands, persons, towns, poverty }) => `<tr><td><a href="${hrefRegion(r.slug)}"><b>${esc(regionLabel(r.name))}</b></a></td><td class="num">${r.provinces.length}</td><td class="num">${towns}</td><td class="num">${fmt(seats)}</td><td class="num">${fmt(cands)}</td><td class="num">${fmt(persons)}</td><td class="num">${poverty == null ? '–' : poverty.toFixed(1) + '%'}</td></tr>`).join('')}</tbody></table>
-  ${rows.map(({ r, seats, towns, persons }) => `<div class="region-block" id="${esc(r.slug)}"><h3><a href="${hrefRegion(r.slug)}">${esc(regionLabel(r.name))}</a> <small class="mono mute">${r.provinces.length} provinces · ${towns} towns · ${fmt(seats)} seats · ${fmt(persons)} people</small></h3><div class="tiles">${r.provinces.map(p => provinceTile(p, latest)).join('')}</div></div>`).join('')}
-  <p class="note">Regions follow each province's assignment in the latest election. Poverty incidence is the unweighted average of the region's provinces from the PSA.</p></div>`;
+  <div class="table-tools"><button class="linkbtn" id="expand-all" type="button">Expand all</button><button class="linkbtn" id="collapse-all" type="button">Collapse all</button></div>
+  <table class="list regions" id="regions"><thead><tr><th></th><th>Region / province</th><th class="num">Provinces</th><th class="num">Towns</th><th class="num">Seats</th><th class="num">Candidates</th><th class="num">People</th><th class="num">Poverty</th></tr></thead><tbody>
+  ${rows.map(({ r, seats, cands, persons, towns, poverty }) => {
+        const isOpen = open.has(r.slug);
+        return `<tr class="region-row" data-region="${esc(r.slug)}" aria-expanded="${isOpen}"><td class="tog"><button type="button" class="toggle" aria-label="Expand ${esc(regionLabel(r.name))}">${isOpen ? '−' : '+'}</button></td><td><b>${esc(regionLabel(r.name))}</b></td><td class="num">${r.provinces.length}</td><td class="num">${towns}</td><td class="num">${fmt(seats)}</td><td class="num">${fmt(cands)}</td><td class="num">${fmt(persons)}</td><td class="num">${poverty == null ? '–' : poverty.toFixed(1) + '%'}</td></tr>`
+            + r.provinces.map(p => { const y = p.years[String(latest)]; return `<tr class="province-row" data-region="${esc(r.slug)}"${isOpen ? '' : ' hidden'}><td></td><td><a href="${hrefProvince(p.slug)}">${esc(title(p.name))}</a></td><td class="num mute">–</td><td class="num">${p.cities.length}</td><td class="num">${fmt(y?.seats)}</td><td class="num">${fmt(y?.candidacies)}</td><td class="num">${fmt(p.persons)}</td><td class="num">${p.poverty != null ? p.poverty + '%' : '–'}</td></tr>`; }).join('');
+    }).join('')}</tbody></table>
+  <p class="note">Regions follow each province's assignment in the latest election. Region poverty is the unweighted average of its provinces from the PSA.</p></div>`;
+        const table = root.querySelector<HTMLTableElement>('#regions')!;
+        const setOpen = (slug: string, on: boolean) => {
+            const head = table.querySelector<HTMLElement>(`tr.region-row[data-region="${slug}"]`); if (!head) return;
+            head.setAttribute('aria-expanded', String(on)); head.querySelector('.toggle')!.textContent = on ? '−' : '+';
+            table.querySelectorAll<HTMLElement>(`tr.province-row[data-region="${slug}"]`).forEach(tr => { tr.hidden = !on; });
+            if (on) open.add(slug); else open.delete(slug);
+            history.replaceState(null, '', location.pathname + (open.size ? `?open=${[...open].join(',')}` : ''));
+        };
+        table.addEventListener('click', e => {
+            const head = (e.target as HTMLElement).closest<HTMLElement>('tr.region-row');
+            if (!head || (e.target as HTMLElement).closest('a')) return;
+            const slug = head.dataset['region']!; setOpen(slug, head.getAttribute('aria-expanded') !== 'true');
+        });
+        root.querySelector('#expand-all')!.addEventListener('click', () => rows.forEach(({ r }) => setOpen(r.slug, true)));
+        root.querySelector('#collapse-all')!.addEventListener('click', () => rows.forEach(({ r }) => setOpen(r.slug, false)));
+        if (open.size) table.querySelector<HTMLElement>(`tr.region-row[data-region="${[...open][0]}"]`)?.scrollIntoView({ block: 'start' });
     } catch (e) { failed(root, e); }
 }

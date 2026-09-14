@@ -244,7 +244,18 @@ footer.site a:hover { color: var(--ink) }
 .hero h1 { font-size: 40px }
 .hero.compact { padding-top: 14px }
 .hero.compact h1 { font-size: 30px }
-table.regions { margin-top: 10px }
+table.regions { margin-top: 6px }
+table.regions td.tog, table.regions th:first-child { width: 28px; padding-right: 0 }
+table.regions .toggle { width: 22px; height: 22px; border: 1px solid var(--line); border-radius: 6px; color: var(--mute); font: 600 14px var(--mono); line-height: 1 }
+table.regions .toggle:hover { color: var(--ink); border-color: var(--ink) }
+table.regions tr.region-row { cursor: pointer }
+table.regions tr.region-row:hover td { background: var(--panel2) }
+table.regions tr.region-row[aria-expanded="true"] td { background: var(--panel2) }
+table.regions tr.province-row td { color: var(--mute) }
+table.regions tr.province-row td:nth-child(2) { padding-left: 24px }
+table.regions tr.province-row a { color: var(--ink) }
+.table-tools { display: flex; gap: 14px; justify-content: flex-end; margin: 12px 0 0 }
+.table-tools .linkbtn { margin-left: 0 }
 .stats.wide { grid-template-columns: repeat(6, 1fr); margin: 0 0 18px }
 .actions { display: flex; gap: 8px; flex-wrap: wrap }
 .btn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; background: var(--ink); color: var(--bg) !important; font-weight: 600; font-size: 13px; border: 1px solid var(--ink) }

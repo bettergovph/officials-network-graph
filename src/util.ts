@@ -39,7 +39,7 @@ export const shortName = (last: string, first: string, suffix = '') => `${title(
 export const hrefProvince = (p: string, year?: number | string) => `/province/${p}${year ? `?year=${year}` : ''}`;
 export const hrefTown = (p: string, c: string, year?: number | string) => `/province/${p}/${c}${year ? `?year=${year}` : ''}`;
 export const hrefPerson = (p: string, id: string) => `/person/${p}/${id}`;
-export const hrefRegion = (r: string) => `/region/${r}`;
+export const hrefRegion = (r: string) => `/regional?open=${r}`;
 
 export const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 export const yearTabs = (years: (number | string)[], current: number | string, href: (y: number | string) => string) =>

@@ -4,20 +4,6 @@ import { crumbs, loading, failed, contestCard, sortContests, winnersOf, slugOf }
 
 const provinceName = (index: IndexData, slug: string) => { for (const r of index.regions) for (const p of r.provinces) if (p.slug === slug) return p.name; return slug; };
 
-export async function region(root: HTMLElement, slug: string) {
-    loading(root);
-    try {
-        const index = await loadIndex();
-        const r = index.regions.find(x => x.slug === slug);
-        if (!r) { failed(root, 'No such region'); return; }
-        const latest = index.years[index.years.length - 1]!;
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/regional' }, { label: regionLabel(r.name) }])}
-  <h1>${esc(regionLabel(r.name))}</h1>
-  <table class="list"><thead><tr><th>Province</th><th class="num">Towns</th><th class="num">Seats ${latest}</th><th class="num">Candidates ${latest}</th><th class="num">People since ${index.years[0]}</th><th class="num">Poverty</th></tr></thead><tbody>
-  ${r.provinces.map(p => `<tr><td><a href="${hrefProvince(p.slug)}"><b>${esc(title(p.name))}</b></a></td><td class="num">${p.cities.length}</td><td class="num">${fmt(p.years[String(latest)]?.seats)}</td><td class="num">${fmt(p.years[String(latest)]?.candidacies)}</td><td class="num">${fmt(p.persons)}</td><td class="num">${p.poverty != null ? p.poverty + '%' : '–'}</td></tr>`).join('')}</tbody></table></div>`;
-    } catch (e) { failed(root, e); }
-}
-
 function pickYear(years: number[], q: URLSearchParams): number {
     const y = Number(q.get('year'));
     return years.includes(y) ? y : years[years.length - 1]!;

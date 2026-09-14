@@ -1,5 +1,5 @@
 import './styles.css';
-import { region, province, town } from './views/places';
+import { province, town } from './views/places';
 import { person } from './views/person';
 import { search } from './views/search';
 import { national } from './views/national';
@@ -11,9 +11,9 @@ import { mountDynasties } from './views/dynasties';
 type View = (root: HTMLElement, params: string[], query: URLSearchParams) => void | Promise<void> | (() => void);
 const routes: { pattern: RegExp; view: View; nav?: string }[] = [
     { pattern: /^\/$/, view: root => mountDynasties(root), nav: 'dynasties' },
-    { pattern: /^\/(?:regional|map|regions)\/?$/, view: root => regional(root), nav: 'regional' },
+    { pattern: /^\/(?:regional|map|regions)\/?$/, view: (root, _p, q) => regional(root, q), nav: 'regional' },
     { pattern: /^\/national(?:\/(\d{4}))?\/?$/, view: (root, [y]) => national(root, y), nav: 'national' },
-    { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => region(root, s!), nav: 'regional' },
+    { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => regional(root, new URLSearchParams({ open: s! })), nav: 'regional' },
     { pattern: /^\/province\/([^/]+)\/?$/, view: (root, [s], q) => province(root, s!, q), nav: 'regional' },
     { pattern: /^\/province\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, c], q) => town(root, s!, c!, q), nav: 'regional' },
     { pattern: /^\/person\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, id]) => person(root, s!, id!), nav: 'officials' },
