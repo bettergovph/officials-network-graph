@@ -21,7 +21,7 @@ export async function about(root: HTMLElement) {
   <h2>Sources</h2>
   <p>Please cite the original sources when you reuse numbers from this site.</p>
   <ol class="prose cite">
-    <li><b>Election results.</b> Robert R. Leung, <em>Open Halalan: The Philippine National and Local Election Dataset</em>. <a href="https://robertrleung.github.io/OpenHalalan/" target="_blank" rel="noopener noreferrer">robertrleung.github.io/OpenHalalan</a>. Two files from the rolling <code>data-latest</code> release are used: the winners list (<code>NLE_Winners_2004-2025.csv</code>, local winners 2001-2025 with names, party and sex) and the vote counts (<code>NLE_Vote_Counts_2007-2025.csv.gz</code>, every candidate with votes per locality, usable from 2010). The project publishes citable frozen snapshots on Zenodo; use those for academic work.</li>
+    <li><b>Election results.</b> Open Halalan, by Robert R. Leung. See the <a href="#openhalalan">full citation</a> below.</li>
     <li><b>Poverty incidence.</b> Philippine Statistics Authority, OpenSTAT, <em>Full Year Official Poverty Statistics</em>: poverty incidence among population by province. <a href="https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true" target="_blank" rel="noopener noreferrer">openstat.psa.gov.ph</a>.</li>
     <li><b>Boundaries.</b> Jan Faeldon, <em>philippines-json-maps</em>, GeoJSON of Philippine administrative boundaries following the 2023 Philippine Standard Geographic Code (PSGC). <a href="https://github.com/faeldon/philippines-json-maps" target="_blank" rel="noopener noreferrer">github.com/faeldon/philippines-json-maps</a>. Simplified here for the web.</li>
     <li><b>Base map.</b> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, under the Open Database License.</li>
@@ -35,6 +35,15 @@ export async function about(root: HTMLElement) {
     <li>Votes exist only from 2010, and about half of 2010 and a quarter of 2013 winners have none because their towns are missing from the vote file.</li>
     <li>A shared surname is a signal, not proof of kinship. Political families also intermarry, split, and use different surnames; middle names catch some of that but not all.</li>
     <li>The full coverage report is in <a href="https://github.com/bettergovph/officials-network-graph/blob/main/docs/coverage.md" target="_blank" rel="noopener noreferrer">docs/coverage.md</a>, and the pipeline that produces every number on this site is <a href="https://github.com/bettergovph/officials-network-graph" target="_blank" rel="noopener noreferrer">on GitHub</a>.</li>
+  </ul>
+
+  <h2 id="openhalalan">Open Halalan</h2>
+  <p class="prose">Every election result on this site comes from <em>Open Halalan: The Philippine National and Local Election Dataset</em>, compiled and maintained by Robert R. Leung. It gathers COMELEC results for national and local elections into consistent, machine-readable files, and is the reason a site like this can exist. Please cite it, not this site, as the source of any figure you reuse.</p>
+  <blockquote class="citation">Leung, Robert R. <em>Open Halalan: The Philippine National and Local Election Dataset</em>. <a href="https://robertrleung.github.io/OpenHalalan/" target="_blank" rel="noopener noreferrer">https://robertrleung.github.io/OpenHalalan/</a>. Data release <code>data-latest</code>, accessed ${index?.built ?? '2026'}.</blockquote>
+  <ul class="prose">
+    <li><b>Files used:</b> <code>NLE_Winners_2004-2025.csv</code> (every local winner 2001-2025 with names, party and sex) and <code>NLE_Vote_Counts_2007-2025.csv.gz</code> (every candidate with votes per locality, usable from 2010, including the district and unit of each seat).</li>
+    <li><b>Versioning:</b> the <code>data-latest</code> release updates in place. The project also publishes frozen, citable snapshots with a DOI on Zenodo; use those for academic work and note the snapshot date.</li>
+    <li><b>What we add:</b> aggregation to one row per candidate per contest, linking winners to vote rows, inferring the few winners the list omits, resolving people across elections, and the surname-bloc analysis. Errors in those steps are ours, not the dataset's; see the <a href="https://github.com/bettergovph/officials-network-graph/blob/main/docs/coverage.md" target="_blank" rel="noopener noreferrer">coverage report</a>.</li>
   </ul>
 
   <h2 id="bettergov">About BetterGov.ph</h2>

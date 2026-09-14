@@ -325,6 +325,7 @@ tr.won { background: color-mix(in oklab, var(--win) 9%, transparent) }
 ul.prose, ol.prose { padding-left: 22px }
 .prose li { margin: 6px 0 }
 .cite li { font-size: 13px }
+.citation { margin: 12px 0; padding: 12px 16px; border-left: 3px solid var(--sur); background: var(--panel); border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.6; max-width: 760px }
 .searchform { display: flex; gap: 8px; margin: 8px 0 18px }
 .searchform input { flex: 1; max-width: 520px }
 code { font-family: var(--mono); font-size: 11px; background: var(--panel2); padding: 1px 5px; border-radius: 4px }
