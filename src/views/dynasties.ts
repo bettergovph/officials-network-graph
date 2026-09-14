@@ -29,8 +29,8 @@ const stored = (k: string) => { try { return localStorage.getItem(k); } catch { 
 const store = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
 const DIRS: Dir[] = ['atlas', 'network', 'ledger'];
 
-// Atlas is always the starting view; year and region are remembered.
-const S = { dir: 'atlas' as Dir, tab: 'blocs' as 'blocs' | 'regions', year: stored('dyn.year') ?? '', region: stored('dyn.region') ?? '', province: '', town: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
+// Every visit starts on the latest election and the whole country (deep links can override).
+const S = { dir: 'atlas' as Dir, tab: 'blocs' as 'blocs' | 'regions', year: '', region: '', province: '', town: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
 /** Whole-country scope is fine on the atlas for one election; the graph and ledger build every bloc at once. */
 const heavy = (dir = S.dir, region = S.region, year = S.year) => region === '' && (dir !== 'atlas' || year === 'all');
 let INDEX: IndexData | null = null;
