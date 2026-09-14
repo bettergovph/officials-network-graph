@@ -370,10 +370,10 @@ code { font-family: var(--mono); font-size: 11px; background: var(--panel2); pad
     body.full main#view { overflow: auto }
     .dyn { flex: none }
     /* toolbar in two rows: views + filter, then year / scope / rule */
-    .dyn-toolbar { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr) auto; gap: 8px; padding: 8px 12px; align-items: center }
+    .dyn-toolbar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 136px; gap: 8px; padding: 8px 12px; align-items: center }
     .dyn-toolbar #review { grid-column: 1 / 3; grid-row: 1; height: 32px; justify-self: start }
     .dyn-toolbar #review button { padding: 0 10px; font-size: 12px }
-    .dyn-toolbar #q { grid-column: 3; grid-row: 1; width: 100%; min-width: 0; margin: 0; height: 32px; padding: 6px 8px; font-size: 13px }
+    .dyn-toolbar #q { grid-column: 3; grid-row: 1; width: 100%; min-width: 0; margin: 0; height: 32px; padding: 6px 8px; font-size: 13px; contain: inline-size }
     .dyn-toolbar .ctl { grid-row: 2; min-width: 0; gap: 0 }
     .dyn-toolbar .ctl label { display: none }
     .dyn-toolbar .ctl-year { grid-column: 1 } .dyn-toolbar .ctl:nth-of-type(2) { grid-column: 2 } .dyn-toolbar .ctl:nth-of-type(3) { grid-column: 3 }
@@ -381,7 +381,7 @@ code { font-family: var(--mono); font-size: 11px; background: var(--panel2); pad
     #yearsel { display: block }
     .dyn-toolbar select { height: 32px; padding: 4px 6px; font-size: 13px; max-width: 100%; width: 100% }
     .dyn-toolbar .seg { height: 32px; overflow-x: auto; max-width: 100% }
-    .dyn-toolbar .seg button { flex: none; padding: 0 8px; font-size: 12px }
+    .dyn-toolbar .seg button { flex: none; padding: 0 7px; font-size: 12px }
     .dyn-toolbar .ctl:nth-of-type(2) { flex-wrap: wrap }
     .dyn-toolbar .ctl:nth-of-type(2) select { flex: 1 1 100% }
     .dyn-toolbar .pill { font-size: 10px; padding: 2px 8px }
