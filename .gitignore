@@ -18,3 +18,6 @@ Thumbs.db
 data/raw/
 data/*.sqlite
 data/d1/
+
+# Wrangler local state
+.wrangler/

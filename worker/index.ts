@@ -4,6 +4,8 @@
  * Every other path is served from the static Vite build (ASSETS binding, SPA fallback).
  * Read-only. Responses carry the data vintage and the source citation.
  */
+import { renderPage, sitemap, robots } from './seo';
+
 export interface Env { DB: D1Database; ASSETS: Fetcher }
 
 const VERSION = '1.0.0';
@@ -290,7 +292,13 @@ export default {
             if (url.pathname === '/' || url.pathname === '') return rest(new URL('/api/v1', url), env);
             return Response.redirect(`https://${SITE_HOST}${url.pathname}${url.search}`, 302);
         }
-        if (!url.pathname.startsWith('/api')) return env.ASSETS.fetch(request);
+        if (!url.pathname.startsWith('/api')) {
+            if (url.pathname === '/robots.txt') return robots();
+            if (url.pathname.startsWith('/sitemap')) { try { const r = await sitemap(url, env, (await getVintage(env)).built); return r ?? new Response('not found', { status: 404 }); } catch (e) { return errorResponse(e); } }
+            // Pages: rewrite index.html per URL with title, description, canonical, JSON-LD and a crawlable summary.
+            if (request.method === 'GET' && !url.pathname.startsWith('/data/') && !url.pathname.startsWith('/assets/') && !/\.[a-z0-9]{2,5}$/i.test(url.pathname)) return renderPage(request, env, url);
+            return env.ASSETS.fetch(request);
+        }
         if (request.method !== 'GET') return errorResponse(new ApiError(405, 'method not allowed'));
         try { return await rest(url, env); } catch (e) { return errorResponse(e); }
     },

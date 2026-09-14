@@ -40,6 +40,8 @@ async function render() {
         document.querySelectorAll<HTMLAnchorElement>('nav.topnav a').forEach(a => a.setAttribute('aria-current', String(a.dataset['nav'] === r.nav)));
         const result = await r.view(view, m.slice(1) as string[], query);
         if (typeof result === 'function') cleanup = result;
+        const h1 = view.querySelector('.page h1')?.textContent?.trim();
+        document.title = h1 && r.nav !== 'dynasties' ? `${h1} · Dynasties by BetterGov.ph` : 'Dynasties by BetterGov.ph: the political map of the Philippines';
         if (!location.hash) view.scrollTop = 0;
         return;
     }
