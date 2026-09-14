@@ -1,4 +1,4 @@
-## Dynasty: the political map of the Philippines, 2001-2025
+## Dynasties: the political map of the Philippines, 2001-2025
 
 Every candidate for local office in the Philippines since 2001, who won, who lost, who keeps coming back, and which surnames hold the seats. Browse by region, province and town, look up a politician, or open the surname-bloc analysis.
 

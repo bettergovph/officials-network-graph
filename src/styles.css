@@ -211,7 +211,7 @@ header.top { display: flex; align-items: center; gap: 22px; padding: 10px 20px; 
 .brand { display: flex; align-items: baseline; gap: 10px; color: var(--ink); text-decoration: none }
 .brand:hover { text-decoration: none }
 .brand b { font-size: 18px; font-weight: 700; letter-spacing: -.01em }
-.brand span { font: 500 11px var(--mono); color: var(--mute); letter-spacing: .04em; text-transform: uppercase }
+.brand span { font: 500 12px var(--mono); color: var(--mute); letter-spacing: .02em }
 nav.topnav { display: flex; gap: 22px; height: 34px; align-items: center }
 nav.topnav a { color: var(--mute); font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent }
 nav.topnav a:hover { color: var(--ink); text-decoration: none }

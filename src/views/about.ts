@@ -6,8 +6,8 @@ export async function about(root: HTMLElement) {
     const index = await loadIndex().catch(() => null);
     const first = index?.years[0] ?? 2001, last = index?.years[index.years.length - 1] ?? 2025;
     root.innerHTML = `<div class="page narrow">${crumbs([{ label: 'Philippines', href: '/regional' }, { label: 'About' }])}
-  <h1>About Dynasty</h1>
-  <p class="lede">Dynasty is the political map of the Philippines: every candidate for local office from ${first} to ${last}, who won, who lost, who keeps coming back, and which surnames hold the seats. It is built and maintained by volunteers at <a href="https://bettergov.ph" target="_blank" rel="noopener noreferrer">BetterGov.ph</a>, and the code and data pipeline are open source.</p>
+  <h1>About Dynasties</h1>
+  <p class="lede">Dynasties is the political map of the Philippines: every candidate for local office from ${first} to ${last}, who won, who lost, who keeps coming back, and which surnames hold the seats. It is built and maintained by volunteers at <a href="https://bettergov.ph" target="_blank" rel="noopener noreferrer">BetterGov.ph</a>, and the code and data pipeline are open source.</p>
   ${index ? `<div class="stats wide"><div class="stat"><b>${fmt(index.totals.persons)}</b><span>people</span></div><div class="stat"><b>${fmt(index.totals.candidacies)}</b><span>candidacies</span></div><div class="stat"><b>${fmt(index.totals.contests)}</b><span>contests</span></div><div class="stat"><b>${index.totals.provinces}</b><span>provinces</span></div><div class="stat"><b>${fmt(index.totals.cities)}</b><span>cities &amp; towns</span></div><div class="stat"><b>${index.years.length}</b><span>elections</span></div></div>` : ''}
 
   <h2>What you can do here</h2>
@@ -48,6 +48,6 @@ export async function about(root: HTMLElement) {
 
   <h2 id="bettergov">About BetterGov.ph</h2>
   <p class="prose"><a href="https://bettergov.ph" target="_blank" rel="noopener noreferrer">BetterGov.ph</a> describes itself as "a volunteer-led tech initiative committed to creating #civictech projects aimed at making government more transparent, efficient, and accessible to citizens." Its volunteers build open-source tools for the Philippines, from a better national government website to dashboards over procurement, budget and infrastructure records, and publish the code under open licenses on <a href="https://github.com/bettergovph" target="_blank" rel="noopener noreferrer">github.com/bettergovph</a>.</p>
-  <p class="prose">Dynasty is one of those projects. If you spot a wrong match, a missing town, or want to help, open an issue on GitHub or write to <a href="mailto:volunteers@bettergov.ph">volunteers@bettergov.ph</a>.</p>
+  <p class="prose">Dynasties is one of those projects. If you spot a wrong match, a missing town, or want to help, open an issue on GitHub or write to <a href="mailto:volunteers@bettergov.ph">volunteers@bettergov.ph</a>.</p>
 </div>`;
 }
