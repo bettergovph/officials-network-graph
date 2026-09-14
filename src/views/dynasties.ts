@@ -15,9 +15,9 @@ interface Province { name: string; region: string; sur: Record<string, Set<strin
 interface GeoProps { name: string; slug: string | null; region?: string; label?: string }
 type Dir = 'atlas' | 'network' | 'ledger';
 type SortKey = 'sur' | 'prov' | 'n' | 'nmid' | 'terms' | 'share' | 'votes' | 'top' | 'pov';
-type NodeType = 'p' | 's' | 'f' | 'c';
-type LinkType = 'ps' | 'sf' | 'fc' | 'pc' | 'ss';
-interface GNode extends d3.SimulationNodeDatum { id: string; t: NodeType; label: string; r: number; x: number; y: number; prov?: string; c?: Cluster; via?: Via }
+type NodeType = 'r' | 'p' | 's' | 'f' | 'c';
+type LinkType = 'rp' | 'ps' | 'sf' | 'fc' | 'pc' | 'ss';
+interface GNode extends d3.SimulationNodeDatum { id: string; t: NodeType; label: string; r: number; x: number; y: number; prov?: string; region?: string; c?: Cluster; via?: Via }
 interface GLink extends d3.SimulationLinkDatum<GNode> { t: LinkType }
 
 const POVALIAS: Record<string, string> = { "TAWI TAWI": "TAWI-TAWI", "MAGUINDANAO DEL SUR": "MAGUINDANAO", "MAGUINDANAO DEL NORTE": "MAGUINDANAO", "DAVAO DE ORO": "COMPOSTELA VALLEY", "NCR FIRST DISTRICT": "NCR, CITY OF MANILA, FIRST DISTRICT", "NCR SECOND DISTRICT": "NCR, SECOND DISTRICT", "NCR THIRD DISTRICT": "NCR, THIRD DISTRICT", "NCR FOURTH DISTRICT": "NCR, FOURTH DISTRICT" };
@@ -340,10 +340,17 @@ function buildGraph() {
     const list = scoped(); const wide = !S.region && !S.province;
     const clusters = wide ? list.filter(c => c.n >= Math.max(S.min, 4)) : list;
     const nodes: GNode[] = [], links: GLink[] = [];
-    const pid: Record<string, GNode> = {}, cid: Record<string, GNode> = {}, sid: Record<string, GNode[]> = {};
+    const pid: Record<string, GNode> = {}, rid: Record<string, GNode> = {}, cid: Record<string, GNode> = {}, sid: Record<string, GNode[]> = {};
     for (const c of clusters) {
         let pn = pid[c.prov];
-        if (!pn) { pn = pid[c.prov] = { id: 'p|' + c.prov, t: 'p', label: title(c.prov), r: wide ? 4 : 7, prov: c.prov, x: 0, y: 0 }; nodes.push(pn); }
+        if (!pn) {
+            pn = pid[c.prov] = { id: 'p|' + c.prov, t: 'p', label: title(c.prov), r: wide ? 4 : 7, prov: c.prov, x: 0, y: 0 }; nodes.push(pn);
+            if (!S.province) { // region hubs: click one to scope the graph to that region
+                let rn = rid[c.region];
+                if (!rn) { rn = rid[c.region] = { id: 'r|' + c.region, t: 'r', label: regionLabel(c.region), r: wide ? 9 : 11, region: c.region, x: 0, y: 0 }; nodes.push(rn); }
+                links.push({ source: rn.id, target: pn.id, t: 'rp' });
+            }
+        }
         const s: GNode = { id: c.id, t: 's', label: title(c.sur), r: Math.sqrt(c.n) * (wide ? 2.2 : 3.2) + 2, c, x: 0, y: 0 };
         nodes.push(s); links.push({ source: pn.id, target: s.id, t: 'ps' }); (sid[c.sur] ??= []).push(s);
         if (!wide) c.members.forEach((m, i) => {
@@ -356,9 +363,9 @@ function buildGraph() {
     for (const arr of Object.values(sid)) if (arr.length > 1) for (let i = 1; i < arr.length; i++) links.push({ source: arr[0]!.id, target: arr[i]!.id, t: 'ss' });
     gNodes = nodes; gLinks = links;
     if (sim) sim.stop();
-    const dist: Record<LinkType, number> = { ps: wide ? 30 : 60, sf: 10, fc: 22, pc: wide ? 0 : 90, ss: wide ? 60 : 120 };
-    const str: Record<LinkType, number> = { ps: .4, sf: .9, fc: .35, pc: .15, ss: .12 };
-    const charge: Record<NodeType, number> = { p: -260, s: -40, c: -50, f: -6 };
+    const dist: Record<LinkType, number> = { rp: wide ? 70 : 140, ps: wide ? 30 : 60, sf: 10, fc: 22, pc: wide ? 0 : 90, ss: wide ? 60 : 120 };
+    const str: Record<LinkType, number> = { rp: .5, ps: .4, sf: .9, fc: .35, pc: .15, ss: .12 };
+    const charge: Record<NodeType, number> = { r: wide ? -900 : -600, p: -260, s: -40, c: -50, f: -6 };
     sim = d3.forceSimulation<GNode>(nodes).force('link', d3.forceLink<GNode, GLink>(links).id(d => d.id).distance(l => dist[l.t]).strength(l => str[l.t])).force('charge', d3.forceManyBody<GNode>().strength(d => charge[d.t])).force('collide', d3.forceCollide<GNode>(d => d.r + 2)).force('center', d3.forceCenter(0, 0)).force('x', d3.forceX<GNode>().strength(.03)).force('y', d3.forceY<GNode>().strength(.03)).alphaDecay(.03).on('tick', () => { if (autoFit) fitGraph(); else drawGraph(); }).on('end', () => { if (autoFit) fitGraph(); });
     autoFit = true;
 }
@@ -368,8 +375,8 @@ function ensureCanvas() {
     const canvas = document.createElement('canvas'); host.appendChild(canvas); gCanvas = canvas; gCtx = canvas.getContext('2d');
     gZoom = d3.zoom<HTMLCanvasElement, unknown>().scaleExtent([.02, 8]).on('zoom', e => { gT = e.transform; if (e.sourceEvent) autoFit = false; drawGraph(); });
     d3.select(canvas).call(gZoom).on('dblclick.zoom', () => { autoFit = true; fitGraph(); });
-    canvas.addEventListener('mousemove', e => { const n = pick(e); if (n !== gHover) { gHover = n; canvas.style.cursor = n && n.t !== 'f' && n.t !== 'c' ? 'pointer' : 'default'; drawGraph(); } });
-    canvas.addEventListener('click', e => { const n = pick(e); if (!n) return; if (n.t === 's' && n.c) select(n.c.id); else if (n.t === 'p' && n.prov !== undefined) setProvince(n.prov === S.province ? '' : n.prov); });
+    canvas.addEventListener('mousemove', e => { const n = pick(e); if (n !== gHover) { gHover = n; canvas.style.cursor = n && (n.t === 's' || n.t === 'p' || n.t === 'r') ? 'pointer' : 'default'; drawGraph(); } });
+    canvas.addEventListener('click', e => { const n = pick(e); if (!n) return; if (n.t === 's' && n.c) select(n.c.id); else if (n.t === 'p' && n.prov !== undefined) setProvince(n.prov === S.province ? '' : n.prov); else if (n.t === 'r' && n.region !== undefined) setRegion(n.region === S.region ? '' : n.region); });
 }
 function pick(e: MouseEvent): GNode | null {
     if (!gCanvas) return null;
@@ -390,21 +397,21 @@ function drawGraph() {
     for (const l of gLinks) {
         const a = l.source as GNode, b = l.target as GNode;
         if (l.t === 'ss') { x.setLineDash([4 / gT.k, 3 / gT.k]); x.strokeStyle = C.sur; x.globalAlpha = .55; x.lineWidth = 1 / gT.k; }
-        else { x.setLineDash([]); x.lineWidth = .6 / gT.k; x.strokeStyle = l.t === 'ps' || l.t === 'pc' ? C.prov : l.t === 'fc' ? C.mute : C.ppl; x.globalAlpha = l.t === 'ps' ? .35 : l.t === 'pc' ? .15 : l.t === 'fc' ? .3 : .45; }
+        else { x.setLineDash([]); x.lineWidth = .6 / gT.k; x.strokeStyle = l.t === 'rp' ? C.ink : l.t === 'ps' || l.t === 'pc' ? C.prov : l.t === 'fc' ? C.mute : C.ppl; x.globalAlpha = l.t === 'rp' ? .35 : l.t === 'ps' ? .35 : l.t === 'pc' ? .15 : l.t === 'fc' ? .3 : .45; if (l.t === 'rp') x.lineWidth = 1.2 / gT.k; }
         x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke();
     }
     x.setLineDash([]); x.globalAlpha = 1;
     for (const n of gNodes) {
-        x.fillStyle = n.t === 's' ? C.sur : n.t === 'p' || n.t === 'c' ? C.prov : n.via === 'middle' ? C.amber : C.ppl;
+        x.fillStyle = n.t === 's' ? C.sur : n.t === 'r' ? C.ink : n.t === 'p' || n.t === 'c' ? C.prov : n.via === 'middle' ? C.amber : C.ppl;
         x.beginPath(); if (n.t === 'c') { x.globalAlpha = .7; x.rect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2); } else x.arc(n.x, n.y, n.r, 0, 7);
         x.fill(); x.globalAlpha = 1; if (hl(n)) { x.strokeStyle = C.ink; x.lineWidth = 2 / gT.k; x.stroke(); }
     }
     x.textAlign = 'center'; x.textBaseline = 'top';
     for (const n of gNodes) {
-        const show = n.t === 'p' || (n.t === 's' && (n.r * gT.k > 9 || hl(n))) || (n.t === 'f' && gT.k > 3.2) || (n.t === 'c' && (gT.k > 1.6 || hl(n)));
+        const show = n.t === 'r' || n.t === 'p' || (n.t === 's' && (n.r * gT.k > 9 || hl(n))) || (n.t === 'f' && gT.k > 3.2) || (n.t === 'c' && (gT.k > 1.6 || hl(n)));
         if (!show) continue;
-        const fs = (n.t === 'p' ? 10 : n.t === 's' ? 11 : 9) / gT.k;
-        x.font = `${n.t === 'f' ? 400 : n.t === 'c' ? 500 : 600} ${fs}px ${n.t === 'p' || n.t === 'c' ? '"JetBrains Mono", monospace' : '"Instrument Sans", sans-serif'}`;
+        const fs = (n.t === 'r' ? 13 : n.t === 'p' ? 10 : n.t === 's' ? 11 : 9) / gT.k;
+        x.font = `${n.t === 'f' ? 400 : n.t === 'c' ? 500 : n.t === 'r' ? 700 : 600} ${fs}px ${n.t === 'p' || n.t === 'c' ? '"JetBrains Mono", monospace' : '"Instrument Sans", sans-serif'}`;
         x.fillStyle = C.bg; x.globalAlpha = .7; const w = x.measureText(n.label).width; x.fillRect(n.x - w / 2 - 2 / gT.k, n.y + n.r + 1 / gT.k, w + 4 / gT.k, fs + 3 / gT.k); x.globalAlpha = 1;
         x.fillStyle = n.t === 'p' || n.t === 'c' ? C.prov : n.t === 'f' ? C.mute : C.ink; x.fillText(n.label, n.x, n.y + n.r + 2 / gT.k);
     }
@@ -412,6 +419,12 @@ function drawGraph() {
 
 // ----- wiring -----
 function select(id: string) { S.sel = id; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function setRegion(r: string) {
+    if (r === '' && heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return;
+    S.region = r; S.province = ''; S.town = ''; S.sel = null;
+    el<HTMLSelectElement>('region').value = r; el('provpill').hidden = true; store('dyn.region', r);
+    refresh(true);
+}
 function setTown(t: string) { S.town = t; S.sel = null; renderRank(); if (S.dir === 'atlas') void renderMap(); }
 function setProvince(p: string) {
     S.province = p; S.town = '';
@@ -449,7 +462,7 @@ const MARKUP = `<div class="dyn">
 </div>
 <div class="dyn-main">
   <section class="panel" id="map"><div class="ph"><h2>Where dynasties hold seats</h2><small>color = share of seats in surname blocs · click a province for its towns</small></div><div class="body" style="padding:0"></div><div class="legend" id="maplegend"></div><div class="hint">click a province to focus</div></section>
-  <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click surname</div></section>
+  <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--ink)"></i>region · click to scope</div><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click a region, province or surname</div></section>
   <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
 </div>
