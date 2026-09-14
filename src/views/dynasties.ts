@@ -125,15 +125,46 @@ const unit = () => S.year === 'all' ? 'officials' : 'seats';
 const perUnit = () => S.year === 'all' ? 'people' : 'seats';
 const personHref = (r: Row) => r.person_id ? hrefPerson(slug(r.province), r.person_id) : '';
 
+type Level = 'country' | 'region' | 'province' | 'town';
+function renderCrumbs() {
+    const items: { label: string; level: Level }[] = [{ label: 'Philippines', level: 'country' }];
+    if (S.region) items.push({ label: regionLabel(S.region), level: 'region' });
+    if (S.province) items.push({ label: title(S.province), level: 'province' });
+    if (S.town) items.push({ label: title(S.town), level: 'town' });
+    el('crumbs').innerHTML = items.map((it, i) => i === items.length - 1 ? `<span>${it.label}</span>` : `<button type="button" data-level="${it.level}">${it.label}</button>`).join('<i>›</i>');
+    el('rankmeta').textContent = yearLabel();
+}
+function goLevel(level: Level) {
+    if (level === 'country') { if (heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return; S.region = ''; store('dyn.region', ''); el<HTMLSelectElement>('region').value = ''; setProvince(''); }
+    else if (level === 'region') setProvince('');
+    else if (level === 'province') setTown('');
+}
+/** Top panel when a town is selected: its seats, the surnames holding them, and every official. */
+function renderTownPanel() {
+    const p = PROV[S.province]!;
+    const town = S.town;
+    const people = Object.values(p.people).filter(q => latest(q).city === town).sort((a, b) => rank(a) - rank(b) || a.last_name.localeCompare(b.last_name));
+    const inBloc = people.filter(q => p.covered.has(q.key));
+    const blocs = p.clusters.map(c => ({ c, here: c.members.filter(m => latest(m).city === town) })).filter(x => x.here.length).sort((a, b) => b.here.length - a.here.length || b.c.n - a.c.n);
+    const label = (r: Person) => { const href = personHref(latest(r)); const t = `${title(r.first_name)} ${title(r.last_name)}`; return href ? `<a href="${href}">${t}</a>` : t; };
+    el('stats').innerHTML = `<div class="stat"><b>${people.length}</b><span>${unit()} in ${title(town)}</span></div><div class="stat"><b style="color:${inBloc.length ? 'var(--sur)' : 'inherit'}">${people.length ? pct(inBloc.length / people.length) : '–'}</b><span>held by a surname bloc</span></div><div class="stat"><b>${blocs.length}</b><span>bloc${blocs.length === 1 ? '' : 's'} with seats here</span></div>`;
+    el('rankbody').innerHTML = `<div class="tree" style="padding:4px 0 8px">
+  ${blocs.length ? `<h4>Surnames with seats here <span style="text-transform:none;letter-spacing:0">(${S.min}+ seats in ${title(p.name)})</span></h4><div class="chips">${blocs.map(({ c, here }) => `<button class="chip" data-id="${c.id}" aria-current="${S.sel === c.id}">${title(c.sur)}<small>${here.length} here · ${c.n} in province</small></button>`).join('')}</div>` : `<div class="empty" style="padding:8px 0"><b>No surname bloc</b>No family name holds ${S.min}+ seats in ${title(p.name)} through officials of ${title(town)}.</div>`}
+  <h4>Officials</h4>${people.map(q => `<div class="person" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}${p.covered.has(q.key) ? '' : ' <span class="mute">· no bloc</span>'}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
+}
 function renderRank() {
+    renderCrumbs();
+    if (S.town && PROV[S.province]) { renderTownPanel(); return; }
     const list = scoped();
     const provs = Object.values(PROV).filter(p => (!S.region || p.region === S.region) && (!S.province || p.name === S.province));
     const seats = d3.sum(provs, p => p.total), dyn = d3.sum(provs, p => p.dyn);
     const first = list[0];
     el('stats').innerHTML = `<div class="stat"><b>${fmt(list.length)}</b><span>surname blocs</span></div><div class="stat"><b>${seats ? pct(dyn / seats) : '–'}</b><span>of ${fmt(seats)} ${unit()}</span></div><div class="stat"><b>${first ? first.n : '–'}</b><span>largest bloc${first ? ' · ' + title(first.sur) : ''}</span></div>`;
-    el('rankmeta').textContent = scopeLabel();
     const max = first ? first.n : 1;
-    el('rankbody').innerHTML = list.slice(0, 60).map((c, i) => `<button class="rk" data-id="${c.id}" aria-current="${S.sel === c.id}"><i>${i + 1}</i><div class="nm">${title(c.sur)}<small>${title(c.prov)}${S.region ? '' : ' · ' + regionLabel(c.region)}</small></div><div class="n">${c.n}<small> ${perUnit()}${c.nmid ? ` <span style="color:var(--amber)">+${c.nmid}m</span>` : ''}</small></div><div class="bar"><i style="width:${c.n / max * 100}%"></i></div></button>`).join('') || `<div class="empty">No surname holds ${S.min}+ seats here.</div>`;
+    const p = S.province ? PROV[S.province] : undefined;
+    const towns = p ? cityStats(p) : null;
+    const facts = p && towns ? `<div class="facts-line mono" style="padding:2px 8px 8px">${p.poverty != null ? `poverty ${p.poverty}% · ` : ''}${towns.size} towns · ${[...towns.values()].filter(v => v.dyn === 0).length} without a bloc · click a town on the map</div>` : '';
+    el('rankbody').innerHTML = facts + list.slice(0, 60).map((c, i) => `<button class="rk" data-id="${c.id}" aria-current="${S.sel === c.id}"><i>${i + 1}</i><div class="nm">${title(c.sur)}<small>${title(c.prov)}${S.region ? '' : ' · ' + regionLabel(c.region)}</small></div><div class="n">${c.n}<small> ${perUnit()}${c.nmid ? ` <span style="color:var(--amber)">+${c.nmid}m</span>` : ''}</small></div><div class="bar"><i style="width:${c.n / max * 100}%"></i></div></button>`).join('') || `<div class="empty">No surname holds ${S.min}+ seats here.</div>`;
 }
 
 function renderTable() {
@@ -149,24 +180,9 @@ function renderTable() {
         + `</tbody></table>` + (list.length > S.limit ? `<button class="more" id="more">Show ${Math.min(150, list.length - S.limit)} more of ${fmt(list.length)}</button>` : '');
 }
 
-function renderTown(host: HTMLElement) {
-    const p = PROV[S.province]; if (!p) return;
-    const town = S.town;
-    const people = Object.values(p.people).filter(q => latest(q).city === town).sort((a, b) => rank(a) - rank(b) || a.last_name.localeCompare(b.last_name));
-    const inBloc = people.filter(q => p.covered.has(q.key));
-    const blocs = p.clusters.map(c => ({ c, here: c.members.filter(m => latest(m).city === town) })).filter(x => x.here.length).sort((a, b) => b.here.length - a.here.length || b.c.n - a.c.n);
-    const label = (r: Person) => { const href = personHref(latest(r)); const t = `${title(r.first_name)} ${title(r.last_name)}`; return href ? `<a href="${href}">${t}</a>` : t; };
-    host.innerHTML = `<div class="dhead"><div class="kicker"><span>${title(p.name)} · ${regionLabel(p.region)} · ${yearLabel()}</span><button class="linkbtn" id="towncl" title="back to province">× province</button></div><h3>${title(town)}<em>${people.length} ${unit()}</em></h3>
-  <div class="facts"><div><b>${blocs.length}</b><span>surname bloc${blocs.length === 1 ? '' : 's'} (${S.min}+ seats in province)</span></div><div><b style="color:${inBloc.length ? 'var(--sur)' : 'inherit'}">${people.length ? pct(inBloc.length / people.length) : '–'}</b><span>of ${unit()} here in a bloc</span></div></div></div>
-  <div class="body tree" style="padding-top:0">
-  ${blocs.length ? `<h4>Surnames with seats here</h4><div class="chips">${blocs.map(({ c, here }) => `<button class="chip" data-id="${c.id}">${title(c.sur)}<small>${here.length} here · ${c.n} in province</small></button>`).join('')}</div>` : `<div class="empty" style="padding:12px 0"><b>No surname bloc</b>No family name holds ${S.min}+ seats in ${title(p.name)} through officials of ${title(town)}.</div>`}
-  <h4>Officials</h4>${people.map(q => `<div class="person" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
-    host.querySelector('#towncl')?.addEventListener('click', () => setTown(''));
-}
 function renderDetail() {
     const host = el('detailbody');
     const c = S.sel ? CLBY[S.sel] : undefined;
-    if (!c && S.town && PROV[S.province]) { renderTown(host); return; }
     if (!c) { host.innerHTML = `<div class="empty"><b>Pick a surname</b>Click a bloc in the list, table, map or graph to see every elected official who carries it, the posts they hold, and related surnames.</div>`; return; }
     const p = PROV[c.prov]!;
     const all = S.year === 'all';
@@ -390,8 +406,8 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; S.town = ''; renderDetail(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
-function setTown(t: string) { S.town = t; if (t) S.sel = null; renderDetail(); if (S.dir === 'atlas') void renderMap(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === S.sel))); }
+function select(id: string) { S.sel = id; renderDetail(); if (S.town) renderRank(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function setTown(t: string) { S.town = t; renderRank(); renderDetail(); if (S.dir === 'atlas') void renderMap(); }
 function setProvince(p: string) {
     S.province = p; S.town = '';
     if (p) { const prov = PROV[p]; if (prov) { S.region = prov.region; el<HTMLSelectElement>('region').value = S.region; } }
@@ -399,7 +415,15 @@ function setProvince(p: string) {
     pill.querySelector('button')?.addEventListener('click', () => setProvince(''));
     refresh(true);
 }
+/** Mirror the scope into the URL (replace, not push) so reloads and remounts keep it. */
+function syncUrl() {
+    if (location.pathname !== '/' && location.pathname !== '/dynasties') return;
+    const q = S.province && INDEX ? `?province=${INDEX.regions.flatMap(r => r.provinces).find(p => p.name === S.province)?.slug ?? slug(S.province)}` : S.region && INDEX ? `?region=${INDEX.regions.find(r => r.name === S.region)?.slug ?? slug(S.region)}` : '';
+    const next = location.pathname + q;
+    if (next !== location.pathname + location.search) history.replaceState(null, '', next);
+}
 function refresh(regraph: boolean) {
+    syncUrl();
     renderRank(); renderTable();
     if (S.dir === 'atlas') void renderMap();
     if (S.dir === 'network') { ensureCanvas(); if (regraph || !sim) buildGraph(); else drawGraph(); }
@@ -422,7 +446,7 @@ const MARKUP = `<div class="dyn">
 <div class="dyn-main">
   <section class="panel" id="map"><div class="ph"><h2>Where dynasties hold seats</h2><small>color = share of seats in surname blocs · click a province for its towns</small></div><div class="body" style="padding:0"></div><div class="legend" id="maplegend"></div><div class="hint">click a province to focus</div></section>
   <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click surname</div></section>
-  <section class="panel" id="rank"><div class="ph"><h2>Largest surname blocs</h2><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
+  <section class="panel" id="rank"><div class="ph"><nav class="crumbs" id="crumbs" aria-label="Scope"></nav><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
   <section class="panel" id="detail"><div id="detailbody" style="display:flex;flex-direction:column;min-height:0;height:100%"></div></section>
 </div>
@@ -459,7 +483,8 @@ export function mountDynasties(root: HTMLElement): () => void {
     });
     dyn.querySelector('#minseg')!.addEventListener('click', e => { const b = closestButton(e); if (!b || !b.dataset['min']) return; S.min = +b.dataset['min']; dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); build(); S.limit = 150; refresh(true); });
     dyn.querySelector<HTMLInputElement>('#q')!.addEventListener('input', e => { S.q = (e.target as HTMLInputElement).value.trim().toUpperCase(); S.limit = 150; refresh(true); });
-    dyn.querySelector('#rankbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.rk'); if (b?.dataset['id']) select(b.dataset['id']); });
+    dyn.querySelector('#rankbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.rk, .chip'); if (b?.dataset['id']) select(b.dataset['id']); });
+    dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#detailbody')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
     window.addEventListener('resize', onResize);

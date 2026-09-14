@@ -72,6 +72,11 @@ input[type=search] { width: 200px }
 .ph h2 { margin: 0; font-size: 13px; font-weight: 600 }
 .ph small { font: 500 11px var(--mono); color: var(--mute) }
 .ph .sp { margin-left: auto }
+.ph .crumbs { margin: 0; font-size: 12px; min-width: 0 }
+.ph .crumbs span { color: var(--ink); font-weight: 600; font-family: var(--sans); font-size: 13px }
+.ph .crumbs button { color: var(--mute); font: inherit; padding: 0 }
+.ph .crumbs button:hover { color: var(--ink); text-decoration: underline }
+.chip[aria-current="true"] { border-color: var(--sur); background: color-mix(in oklab, var(--sur) 12%, transparent) }
 .body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px }
 
 /* directions */
