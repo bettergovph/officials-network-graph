@@ -22,6 +22,9 @@ export const POSORDER = ['GOVERNOR', 'VICE GOVERNOR', 'MEMBER, HOUSE OF REPRESEN
 export const POSSHORT: Record<string, string> = { 'GOVERNOR': 'Gov', 'VICE GOVERNOR': 'V-Gov', 'MEMBER, HOUSE OF REPRESENTATIVES': 'Rep', 'PROVINCIAL BOARD MEMBER': 'Board', 'MAYOR': 'Mayor', 'VICE MAYOR': 'V-Mayor', 'COUNCILOR': 'Councilor' };
 const POSLABEL: Record<string, string> = { 'MEMBER, HOUSE OF REPRESENTATIVES': 'Representative', 'PROVINCIAL BOARD MEMBER': 'Board Member', 'ARMM REGIONAL GOVERNOR': 'ARMM Regional Governor', 'ARMM REGIONAL VICE GOVERNOR': 'ARMM Regional Vice Governor', 'ARMM ASSEMBLYMAN': 'ARMM Assemblyman', 'BARMM MEMBER OF PARLIAMENT': 'BARMM Member of Parliament', 'BARMM PARTY REPRESENTATIVE': 'BARMM Party Representative', 'PARTY LIST': 'Party List', 'VICE PRESIDENT': 'Vice President' };
 export const posLabel = (p: string) => POSLABEL[p] ?? title(p);
+export const ORDINALS = ['LONE', 'FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH'];
+export const ordinalRank = (d: string) => { const i = ORDINALS.indexOf(d); return i < 0 ? ORDINALS.length : i; };
+export const districtLabel = (d: string) => d === 'LONE' ? 'Lone district' : d ? `${title(d)} district` : '';
 export const posRank = (p: string) => { const i = POSORDER.indexOf(p); return i < 0 ? POSORDER.length : i; };
 export const PROVINCE_LEVEL = new Set(['GOVERNOR', 'VICE GOVERNOR', 'PROVINCIAL BOARD MEMBER', 'MEMBER, HOUSE OF REPRESENTATIVES', 'ARMM REGIONAL GOVERNOR', 'ARMM REGIONAL VICE GOVERNOR', 'ARMM ASSEMBLYMAN', 'BARMM MEMBER OF PARLIAMENT', 'BARMM PARTY REPRESENTATIVE']);
 

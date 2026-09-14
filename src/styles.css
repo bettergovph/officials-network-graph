@@ -259,6 +259,15 @@ table.regions tr.region-row[aria-expanded="true"] td { background: var(--panel2)
 table.regions tr.province-row td { color: var(--mute) }
 table.regions tr.province-row td:nth-child(2) { padding-left: 24px }
 table.regions tr.province-row a { color: var(--ink) }
+table.regions tr.province-row { cursor: pointer }
+table.regions tr.province-row:hover td { background: var(--panel2) }
+table.regions .toggle.small { width: 18px; height: 18px; font-size: 12px; margin-left: 4px }
+table.regions tr.town-row td:nth-child(2) { padding-left: 44px }
+table.regions tr.town-row td { color: var(--mute); font-size: 12px; padding-top: 5px; padding-bottom: 5px }
+table.regions tr.town-row a { color: var(--ink) }
+.district { margin: 0 0 18px; padding: 0 0 0 12px; border-left: 3px solid var(--line) }
+.district-h { padding: 4px 0 10px }
+.district-h h3 { font-size: 15px; margin: 0 0 4px }
 .table-tools { display: flex; gap: 14px; justify-content: flex-end; margin: 12px 0 0 }
 .table-tools .linkbtn { margin-left: 0 }
 .stats.wide { grid-template-columns: repeat(6, 1fr); margin: 0 0 18px }

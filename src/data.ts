@@ -1,6 +1,6 @@
 // Loaders for the generated shards under /data (see scripts/build-data.ts).
 
-export interface PlaceCity { name: string; slug: string }
+export interface PlaceCity { name: string; slug: string; seats: number; candidacies: number; district: string }
 export interface PlaceProvince { name: string; slug: string; poverty: number | null; cities: PlaceCity[]; seats: number; candidacies: number; persons: number; years: Record<string, { seats: number; candidacies: number }> }
 export interface PlaceRegion { name: string; slug: string; provinces: PlaceProvince[] }
 export type TopRow = [id: string, last: string, first: string, middle: string, suffix: string, prov: string, runs: number, wins: number, firstYear: number, lastYear: number, top: string];
@@ -11,7 +11,7 @@ export interface IndexData {
     regions: PlaceRegion[];
 }
 export type CandRow = [pid: string, party: string, votes: number | null, won: 0 | 1, rank: number | null, conf: string, link: string];
-export interface Contest { id: string; year: number; city: string; district: string; position: string; seats: number; total: number | null; margin: number | null; uncontested: boolean; complete: boolean; c: CandRow[] }
+export interface Contest { id: string; year: number; city: string; district: string; position: string; seats: number; total: number | null; margin: number | null; uncontested: boolean; complete: boolean; c: CandRow[]; towns?: string[]; townsYear?: number }
 export type PersonRow = [last: string, first: string, middle: string, suffix: string, sex: string, runs: number, wins: number, home: string];
 export type NatRow = [name: string, party: string, votes: number, won: 0 | 1];
 export interface ProvShard { name: string; slug: string; region: string; poverty: number | null; contests: Contest[]; persons: Record<string, PersonRow>; national: Record<string, Record<string, NatRow[]>> }

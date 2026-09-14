@@ -1,5 +1,5 @@
 import type { Contest, CandRow, ProvShard } from '../data';
-import { esc, fmt, pct, title, posLabel, personName, hrefPerson, hrefTown, hrefProvince, posRank, sexMark } from '../util';
+import { esc, fmt, pct, title, posLabel, personName, hrefPerson, hrefTown, hrefProvince, posRank, sexMark, PROVINCE_LEVEL, districtLabel, ordinalRank } from '../util';
 
 export const crumbs = (items: { label: string; href?: string }[]) =>
     `<nav class="crumbs">${items.map(i => i.href ? `<a href="${i.href}">${esc(i.label)}</a>` : `<span>${esc(i.label)}</span>`).join('<i>/</i>')}</nav>`;
@@ -20,7 +20,7 @@ export function resultBadge(cand: CandRow, k: Contest): string {
     return '<span class="badge lost">Lost</span>';
 }
 
-export const contestTitle = (k: Contest) => `${posLabel(k.position)}${k.district ? ` · ${title(k.district)} district` : ''}`;
+export const contestTitle = (k: Contest) => `${posLabel(k.position)}${k.city && PROVINCE_LEVEL.has(k.position) ? ` · ${title(k.city)}` : ''}${k.district ? ` · ${districtLabel(k.district)}` : ''}`;
 
 export function candidateTable(k: Contest, shard: ProvShard, provSlug: string): string {
     const rows = [...k.c].sort((a, b) => (b[3] - a[3]) || ((b[2] ?? -1) - (a[2] ?? -1)) || ((a[4] ?? 99) - (b[4] ?? 99)));
@@ -56,7 +56,12 @@ export function slugOf(shard: ProvShard, city: string): string {
     return s;
 }
 
-export const sortContests = (a: Contest, b: Contest) => posRank(a.position) - posRank(b.position) || a.position.localeCompare(b.position) || a.district.localeCompare(b.district);
+export const sortContests = (a: Contest, b: Contest) => posRank(a.position) - posRank(b.position) || a.position.localeCompare(b.position) || ordinalRank(a.district) - ordinalRank(b.district) || a.city.localeCompare(b.city);
+/** Contests elected per legislative district (representatives, board members), incl. a city's own districts. */
+const DISTRICT_POSITIONS = new Set(['MEMBER, HOUSE OF REPRESENTATIVES', 'PROVINCIAL BOARD MEMBER']);
+export const isDistrictRace = (k: Contest) => DISTRICT_POSITIONS.has(k.position) || (PROVINCE_LEVEL.has(k.position) && (!!k.district || !!k.towns));
+/** Member towns of a district contest: its own city, or the towns that vote in it. */
+export const districtTowns = (k: Contest) => k.city ? [k.city] : (k.towns ?? []);
 
 export function winnersOf(k: Contest, shard: ProvShard, provSlug: string): string {
     const w = k.c.filter(c => c[3]);
