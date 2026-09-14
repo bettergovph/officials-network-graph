@@ -175,6 +175,9 @@ function renderRegionsPanel() {
 }
 function renderRank() {
     renderCrumbs();
+    const tabs = document.getElementById('ptabs');
+    if (tabs) tabs.hidden = S.dir !== 'network'; // the Blocs / Regions switch belongs to the network view only
+    if (S.dir !== 'network') S.tab = 'blocs';
     document.querySelectorAll<HTMLButtonElement>('#ptabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['tab'] === S.tab)));
     if (S.tab === 'regions') { renderRegionsPanel(); return; }
     const c = S.sel ? CLBY[S.sel] : undefined;
