@@ -1,21 +1,20 @@
 import './styles.css';
-import { home, region, province, town } from './views/places';
+import { region, province, town } from './views/places';
 import { person } from './views/person';
 import { search } from './views/search';
 import { national } from './views/national';
 import { people } from './views/people';
-import { regions } from './views/regions';
+import { regional } from './views/regional';
 import { mountDynasties } from './views/dynasties';
 
 type View = (root: HTMLElement, params: string[], query: URLSearchParams) => void | Promise<void> | (() => void);
 const routes: { pattern: RegExp; view: View; nav?: string }[] = [
     { pattern: /^\/$/, view: root => mountDynasties(root), nav: 'dynasties' },
-    { pattern: /^\/map\/?$/, view: root => home(root), nav: 'map' },
-    { pattern: /^\/regions\/?$/, view: root => regions(root), nav: 'regions' },
+    { pattern: /^\/(?:regional|map|regions)\/?$/, view: root => regional(root), nav: 'regional' },
     { pattern: /^\/national(?:\/(\d{4}))?\/?$/, view: (root, [y]) => national(root, y), nav: 'national' },
-    { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => region(root, s!), nav: 'map' },
-    { pattern: /^\/province\/([^/]+)\/?$/, view: (root, [s], q) => province(root, s!, q), nav: 'map' },
-    { pattern: /^\/province\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, c], q) => town(root, s!, c!, q), nav: 'map' },
+    { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => region(root, s!), nav: 'regional' },
+    { pattern: /^\/province\/([^/]+)\/?$/, view: (root, [s], q) => province(root, s!, q), nav: 'regional' },
+    { pattern: /^\/province\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, c], q) => town(root, s!, c!, q), nav: 'regional' },
     { pattern: /^\/person\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, id]) => person(root, s!, id!), nav: 'people' },
     { pattern: /^\/people\/?$/, view: (root, _p, q) => people(root, q), nav: 'people' },
     { pattern: /^\/search\/?$/, view: (root, _p, q) => search(root, q), nav: 'search' },
@@ -39,7 +38,7 @@ async function render() {
         if (!location.hash) view.scrollTop = 0;
         return;
     }
-    view.innerHTML = `<div class="page"><div class="empty"><b>Page not found</b><a href="/map">Back to the map</a></div></div>`;
+    view.innerHTML = `<div class="page"><div class="empty"><b>Page not found</b><a href="/regional">Back to the regions</a></div></div>`;
 }
 
 document.addEventListener('click', e => {

@@ -240,6 +240,9 @@ body.full footer.site { display: none }
 .hero { padding: 28px 0 8px }
 .hero p { max-width: 640px; color: var(--mute); font-size: 15px; margin: 6px 0 18px }
 .hero h1 { font-size: 40px }
+.hero.compact { padding-top: 14px }
+.hero.compact h1 { font-size: 30px }
+table.regions { margin-top: 10px }
 .stats.wide { grid-template-columns: repeat(6, 1fr); margin: 0 0 18px }
 .actions { display: flex; gap: 8px; flex-wrap: wrap }
 .btn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; background: var(--ink); color: var(--bg) !important; font-weight: 600; font-size: 13px; border: 1px solid var(--ink) }
