@@ -19,10 +19,10 @@
 
 /* Light theme (toggle in the navbar) */
 :root[data-theme="light"] {
-    --bg: #f3f1ec;
+    --bg: #f5f6f8;
     --panel: #ffffff;
-    --panel2: #f8f7f3;
-    --line: rgba(0, 0, 0, .09);
+    --panel2: #eef0f3;
+    --line: rgba(0, 0, 0, .08);
     --ink: #171716;
     --mute: #66686e;
     --faint: #a3a5aa;
