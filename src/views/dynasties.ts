@@ -154,7 +154,7 @@ function renderTownPanel() {
     el('stats').innerHTML = `<div class="stat"><b>${people.length}</b><span>${unit()} in ${title(town)}</span></div><div class="stat"><b style="color:${inBloc.length ? 'var(--sur)' : 'inherit'}">${people.length ? pct(inBloc.length / people.length) : '–'}</b><span>held by a surname bloc</span></div><div class="stat"><b>${blocs.length}</b><span>bloc${blocs.length === 1 ? '' : 's'} with seats here</span></div>`;
     el('rankbody').innerHTML = `<div class="tree" style="padding:4px 0 8px">
   ${blocs.length ? `<h4>Surnames with seats here <span style="text-transform:none;letter-spacing:0">(${S.min}+ seats in ${title(p.name)})</span></h4><div class="chips">${blocs.map(({ c, here }) => `<button class="chip" data-id="${c.id}" aria-current="${S.sel === c.id}">${title(c.sur)}<small>${here.length} here · ${c.n} in province</small></button>`).join('')}</div>` : `<div class="empty" style="padding:8px 0"><b>No surname bloc</b>No family name holds ${S.min}+ seats in ${title(p.name)} through officials of ${title(town)}.</div>`}
-  <h4>Officials</h4>${people.map(q => `<div class="person" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}${p.covered.has(q.key) ? '' : ' <span class="mute">· no bloc</span>'}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
+  <h4>Officials</h4>${people.map(q => `<div class="person locate" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}" data-prov="${p.name}" data-city="${town}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}${p.covered.has(q.key) ? '' : ' <span class="mute">· no bloc</span>'}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
 }
 /** "Regions" tab: every region with its bloc share; the current region opens into its provinces. Click to scope. */
 function renderRegionsPanel() {
@@ -219,7 +219,7 @@ function renderBlocPanel(c: Cluster) {
     el('rankbody').innerHTML = `<div class="tree" style="padding:4px 0 8px">
   <div class="kicker" style="display:flex;gap:8px"><span>${title(c.prov)} · ${regionLabel(c.region)}${all ? ` · ${c.terms} terms ${c.years.join(', ')}` : ''}</span>${c.poverty != null ? `<span style="margin-left:auto">poverty ${c.poverty}%</span>` : ''}</div>
   <div class="pos">${posKeys.map(k => `<i style="flex:${posCounts.get(k)};opacity:${1 - POSORDER.indexOf(k) * .1}" title="${k}"></i>`).join('')}</div><div class="poslbl">${posKeys.map(k => `<span>${posCounts.get(k)} ${POSSHORT[k] ?? k}</span>`).join('')}</div>
-  <h4>Officials</h4>${c.members.map(m => `<div class="person" data-via="${m.via}"><div class="who">${nm(m)}${m.via === 'middle' ? ' <span class="via">via middle name</span>' : ''}</div><div class="v">${latest(m).votes ? fmt(+latest(m).votes) : '–'}<small>${latest(m).party || '—'}</small></div>${m.terms.map(r => `<div class="what">${all ? `<span class="yr">${r.year}</span> ` : ''}<b>${title(r.position)}</b>${r.city ? ' · ' + title(r.city) : ''}${r.district ? ' · ' + title(r.district) + ' dist.' : ''}</div>`).join('')}</div>`).join('')}
+  <h4>Officials <span style="text-transform:none;letter-spacing:0">(hover to locate on the map)</span></h4>${c.members.map(m => `<div class="person locate" data-via="${m.via}" data-prov="${c.prov}" data-city="${latest(m).city}"><div class="who">${nm(m)}${m.via === 'middle' ? ' <span class="via">via middle name</span>' : ''}</div><div class="v">${latest(m).votes ? fmt(+latest(m).votes) : '–'}<small>${latest(m).party || '—'}</small></div>${m.terms.map(r => `<div class="what">${all ? `<span class="yr">${r.year}</span> ` : ''}<b>${title(r.position)}</b>${r.city ? ' · ' + title(r.city) : ''}${r.district ? ' · ' + title(r.district) + ' dist.' : ''}</div>`).join('')}</div>`).join('')}
   ${c.related.length ? `<h4>Linked surnames <span style="text-transform:none;letter-spacing:0">(share an official, same province)</span></h4><div class="chips">${c.related.map(s => `<button class="chip" data-id="${c.prov + '|' + s}">${title(s)}<small>${CLBY[c.prov + '|' + s]?.n ?? ''}</small></button>`).join('')}</div>` : ''}
   ${c.elsewhere.length ? `<h4>Same surname elsewhere</h4><div class="chips">${c.elsewhere.slice(0, 12).map(o => `<button class="chip" data-id="${o.id}">${title(o.prov)}<small>${o.n}</small></button>`).join('')}</div>` : ''}</div>`;
 }
@@ -227,6 +227,17 @@ function renderBlocPanel(c: Cluster) {
 // ----- map (province and town boundaries) -----
 let LM: L.Map | null = null, provLayer: L.GeoJSON | null = null, regionLayer: L.GeoJSON | null = null, cityLayer: L.GeoJSON | null = null, labelLayer: L.LayerGroup | null = null;
 let cityLayerFor = '', mapLastKey: string | null = null, mapToken = 0;
+let hoverProv = '', hoverCity = '';
+type StyleFn = (f: Feature<Geometry, GeoProps> | undefined) => L.PathOptions;
+let curProvStyle: StyleFn | null = null, curCityStyle: StyleFn | null = null;
+/** Hovering an official in the panel outlines their town (province focused) or their province on the map. */
+function setHover(prov: string, city: string) {
+    if (prov === hoverProv && city === hoverCity) return;
+    hoverProv = prov; hoverCity = city;
+    if (S.dir !== 'atlas') return;
+    if (curProvStyle && provLayer) provLayer.setStyle(curProvStyle);
+    if (curCityStyle && cityLayer) { cityLayer.setStyle(curCityStyle); if (city) { const sl = slug(city); cityLayer.eachLayer(l => { const f = (l as L.Polygon).feature as Feature<Geometry, GeoProps> | undefined; if (f?.properties.slug === sl) (l as L.Polygon).bringToFront(); }); } }
+}
 const geoCache = new Map<string, Promise<FeatureCollection<Geometry, GeoProps>>>();
 function loadGeo(path: string) {
     let p = geoCache.get(path);
@@ -260,7 +271,7 @@ async function renderMap() {
     const token = ++mapToken;
     const [provinces, regions] = await Promise.all([loadGeo('/data/geo/provinces.json.gz'), loadGeo('/data/geo/regions.json.gz')]);
     if (token !== mapToken || LM !== map) return;
-    const ink = cssVar('--ink'), bg = cssVar('--bg'), none = cssVar('--none');
+    const ink = cssVar('--ink'), bg = cssVar('--bg'), none = cssVar('--none'), hoverColor = cssVar('--ppl');
     // share of seats in blocs: green (low) through amber to red (high)
     const ramp = d3.interpolateRgbBasis([cssVar('--win'), cssVar('--amber'), cssVar('--sur')]);
     const col = (t: number) => ramp(Math.max(0, Math.min(1, t)));
@@ -276,9 +287,13 @@ async function renderMap() {
         const sel = !!p && p.name === S.province;
         if (!p) return { color: 'rgba(128,128,128,.35)', weight: .5, fillColor: '#888', fillOpacity: .05 };
         const holds = selProvs.has(p.name);
+        // hover: the province itself, or, with a province focused, an official whose seat is province-wide (no town)
+        const hov = !!hoverProv && p.name === hoverProv && (!S.province || !hoverCity);
         const dim = !inReg(p) || (!!S.province && !sel) || (selProvs.size > 0 && !holds && inReg(p));
+        if (hov) return { color: hoverColor, weight: 4, fillColor: fill(p.dyn, p.share / maxShare), fillOpacity: .9, opacity: 1 };
         return { color: sel || holds ? ink : 'rgba(0,0,0,.55)', weight: sel ? 2.5 : holds ? 2 : .8, fillColor: fill(p.dyn, p.share / maxShare), fillOpacity: dim ? .14 : .72, opacity: dim ? .35 : 1 };
     };
+    curProvStyle = provStyle;
     if (!regionLayer) regionLayer = L.geoJSON(regions, { style: { color: ink, weight: 1.2, fill: false, dashArray: '4 4', opacity: .45 }, interactive: false }).addTo(map);
     if (provLayer) provLayer.setStyle(provStyle);
     else {
@@ -311,8 +326,11 @@ async function renderMap() {
             const hl = !!f?.properties.slug && selTowns.has(f.properties.slug);
             const isTown = !!townSlug && f?.properties.slug === townSlug;
             const faded = selTowns.size > 0 && !hl && !isTown; // a surname is selected: towns it does not hold step back
+            const hov = !!hoverCity && f?.properties.slug === slug(hoverCity);
+            if (hov) return { color: hoverColor, weight: 4, opacity: 1, fillColor: st ? fill(st.dyn, (st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: st ? .9 : .3 };
             return { color: isTown ? ink : hl ? ink : bg, weight: isTown ? 3.5 : hl ? 2.5 : .8, opacity: faded ? .5 : .95, fillColor: st ? fill(st.dyn, (st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: !st ? .15 : faded ? .18 : .78 };
         };
+        curCityStyle = cityStyle;
         if (cityLayerFor !== S.province) {
             cityLayer?.remove(); cityLayer = null; cityLayerFor = S.province;
             const fc = await loadGeo(`/data/geo/cities/${slug(S.province)}.json.gz`).catch(() => null);
@@ -328,7 +346,7 @@ async function renderMap() {
         cityLayer?.bringToFront();
         const noBloc = [...stats.values()].filter(v => v.dyn === 0).length;
         el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(.5)}"></i>medium</div><div><i style="background:${col(0)}"></i>low</div><div><i style="background:${none}"></i>no surname bloc · ${noBloc} of ${stats.size} towns</div><div><i style="background:transparent;border:2px solid ${ink}"></i>${S.sel ? 'towns where the selected surname holds seats; others faded' : 'click a town for details'}</div>`;
-    } else { cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; }
+    } else { cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; curCityStyle = null; }
     // camera
     const key = S.province || S.region;
     if (key !== mapLastKey) {
@@ -535,6 +553,9 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
         const pv = t.closest<HTMLElement>('.prv[data-province]'); if (pv) { S.tab = 'blocs'; setProvince(pv.dataset['province']!); return; }
         const b = t.closest<HTMLElement>('.rk, .chip'); const c = b?.dataset['id'] ? CLBY[b.dataset['id']] : undefined; if (!c) return; if (!inScope(c)) { clearScope(); refresh(true); } select(c.id);
     });
+    const rankbody = dyn.querySelector<HTMLElement>('#rankbody')!;
+    rankbody.addEventListener('mouseover', e => { const row = (e.target as HTMLElement).closest<HTMLElement>('.locate'); if (row) setHover(row.dataset['prov'] ?? '', row.dataset['city'] ?? ''); else setHover('', ''); });
+    rankbody.addEventListener('mouseleave', () => setHover('', ''));
     dyn.querySelector('#ptabs')!.addEventListener('click', e => { const b = closestButton(e); const tab = b?.dataset['tab']; if (tab === 'blocs' || tab === 'regions') { S.tab = tab; renderRank(); el('rankbody').scrollTop = 0; } });
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
@@ -581,7 +602,7 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
         alive = false;
         window.removeEventListener('resize', onResize);
         window.removeEventListener('themechange', onTheme);
-        LM?.remove(); LM = null; provLayer = null; regionLayer = null; cityLayer = null; labelLayer = null; cityLayerFor = ''; mapLastKey = null; mapToken++;
+        LM?.remove(); LM = null; provLayer = null; regionLayer = null; cityLayer = null; labelLayer = null; cityLayerFor = ''; mapLastKey = null; mapToken++; curProvStyle = null; curCityStyle = null; hoverProv = ''; hoverCity = '';
         sim?.stop(); sim = null; gCanvas = null; gCtx = null; gHover = null;
         delete document.body.dataset['dir'];
     };
