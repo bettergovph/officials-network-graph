@@ -112,3 +112,32 @@ CREATE TABLE IF NOT EXISTS district_towns (
   PRIMARY KEY (contest_id, city_id)
 );
 CREATE INDEX IF NOT EXISTS idx_district_towns_city ON district_towns(city_id);
+
+-- Surname blocs: officials in one province sharing a surname as last or middle name, per election (scope_year)
+-- or across all elections (scope_year = 0). Stored from 2 members up; filter n >= rule at query time.
+CREATE TABLE IF NOT EXISTS blocs (
+  id INTEGER PRIMARY KEY,
+  scope_year INTEGER NOT NULL,
+  province_id INTEGER NOT NULL REFERENCES provinces(id),
+  surname TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  nmid INTEGER NOT NULL,
+  terms INTEGER NOT NULL,
+  share REAL NOT NULL,
+  votes INTEGER NOT NULL,
+  top_position TEXT NOT NULL,
+  parties TEXT NOT NULL DEFAULT '',
+  years TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS bloc_members (
+  bloc_id INTEGER NOT NULL REFERENCES blocs(id),
+  person_id TEXT NOT NULL REFERENCES persons(id),
+  via TEXT NOT NULL,
+  top_position TEXT NOT NULL,
+  city_id INTEGER REFERENCES cities(id),
+  votes INTEGER,
+  PRIMARY KEY (bloc_id, person_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blocs_scope ON blocs(scope_year, province_id, n);
+CREATE INDEX IF NOT EXISTS idx_blocs_surname ON blocs(surname, scope_year);
+CREATE INDEX IF NOT EXISTS idx_bloc_members_person ON bloc_members(person_id);

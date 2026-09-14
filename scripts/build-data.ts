@@ -385,6 +385,36 @@ const personStats = (p: Person) => {
     return { runs: p.cands.length, wins: wins.length, firstYear: Math.min(...years), lastYear: Math.max(...years), top };
 };
 
+// ---------- 4b. surname blocs (same rule as the web view, precomputed for the API) ----------
+interface BlocRow { scopeYear: number; prov: string; surname: string; n: number; nmid: number; terms: number; share: number; votes: number; top: string; parties: string; years: string; members: { pid: string; via: 'surname' | 'middle'; top: string; city: string; votes: number | null }[] }
+function computeBlocs(cands: Cand[], persons: Person[], years: number[]): BlocRow[] {
+    const personById = new Map(persons.map(p => [p.id, p]));
+    const out: BlocRow[] = [];
+    for (const scope of [...years, 0]) {
+        const won = cands.filter(c => c.won && (scope === 0 || c.year === scope));
+        const byProv = new Map<string, Cand[]>();
+        for (const c of won) (byProv.get(c.prov) ?? byProv.set(c.prov, []).get(c.prov)!).push(c);
+        for (const [prov, list] of byProv) {
+            const people = new Map<string, { pid: string; last: string; middle: string; terms: Cand[] }>();
+            for (const c of list) { const p = personById.get(c.pid!)!; const e = people.get(c.pid!) ?? people.set(c.pid!, { pid: c.pid!, last: p.lastKey, middle: p.midKey.length > 1 ? p.midKey : '', terms: [] }).get(c.pid!)!; e.terms.push(c); }
+            for (const e of people.values()) e.terms.sort((a, b) => b.year - a.year || posRank(a.position) - posRank(b.position));
+            const total = people.size;
+            const sur = new Map<string, Set<string>>(), mid = new Map<string, Set<string>>();
+            for (const e of people.values()) { (sur.get(e.last) ?? sur.set(e.last, new Set()).get(e.last)!).add(e.pid); if (e.middle && e.middle !== e.last) (mid.get(e.middle) ?? mid.set(e.middle, new Set()).get(e.middle)!).add(e.pid); }
+            for (const [surname, direct] of sur) {
+                const keys = new Set(direct); let nmid = 0;
+                for (const k of mid.get(surname) ?? []) if (!keys.has(k)) { keys.add(k); nmid++; }
+                if (keys.size < 2) continue;
+                const members = [...keys].map(k => { const e = people.get(k)!; const latest = e.terms[0]!; const top = [...e.terms].sort((a, b) => posRank(a.position) - posRank(b.position))[0]!.position; return { pid: k, via: (direct.has(k) ? 'surname' : 'middle') as 'surname' | 'middle', top, city: latest.city, votes: latest.votes, rank: posRank(top), latestVotes: latest.votes ?? 0, terms: e.terms }; })
+                    .sort((a, b) => a.rank - b.rank || (a.via === b.via ? 0 : a.via === 'surname' ? -1 : 1) || b.latestVotes - a.latestVotes);
+                const terms = members.flatMap(m => m.terms);
+                out.push({ scopeYear: scope, prov, surname: members.find(m => m.via === 'surname') ? personById.get(members.find(m => m.via === 'surname')!.pid)!.last : surname, n: members.length, nmid, terms: terms.length, share: members.length / total, votes: members.reduce((s, m) => s + m.latestVotes, 0), top: members[0]!.top, parties: [...new Set(terms.map(t => t.party).filter(Boolean))].join(','), years: [...new Set(terms.map(t => t.year))].sort().join(','), members: members.map(({ pid, via, top, city, votes }) => ({ pid, via, top, city, votes })) });
+            }
+        }
+    }
+    return out;
+}
+
 // ---------- 5. outputs ----------
 function writeGz(file: string, data: unknown) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -468,12 +498,19 @@ async function main() {
         natId++; natRows.push([natId, n.year, n.position, n.name, n.party, n.votes, rk, won]);
         for (const [p, v] of n.byProv) npv.push([natId, provId.get(p), v]);
     }
+    log('computing blocs');
+    const blocs = computeBlocs(cands, persons, years);
+    log(`  ${blocs.length} blocs, ${blocs.reduce((s, b) => s + b.members.length, 0)} memberships`);
+    insert('blocs', ['id', 'scope_year', 'province_id', 'surname', 'n', 'nmid', 'terms', 'share', 'votes', 'top_position', 'parties', 'years'],
+        blocs.map((b, i) => [i + 1, b.scopeYear, provId.get(b.prov), b.surname, b.n, b.nmid, b.terms, Math.round(b.share * 1e4) / 1e4, b.votes, b.top, b.parties, b.years]));
+    insert('bloc_members', ['bloc_id', 'person_id', 'via', 'top_position', 'city_id', 'votes'],
+        blocs.flatMap((b, i) => b.members.map(m => [i + 1, m.pid, m.via, m.top, m.city ? cityId.get(cityKey(b.prov, m.city)) ?? null : null, m.votes])));
     insert('national_candidates', ['id', 'year', 'position', 'name', 'party', 'votes', 'rank', 'won'], natRows);
     insert('national_province_votes', ['national_id', 'province_id', 'votes'], npv);
     if (chunk.length) d1.push(chunk);
     db.close();
     fs.rmSync(D1DIR, { recursive: true, force: true }); fs.mkdirSync(D1DIR, { recursive: true });
-    const drops = ['national_province_votes', 'national_candidates', 'district_towns', 'candidacies', 'contests', 'persons', 'cities', 'provinces', 'regions'].map(t => `DROP TABLE IF EXISTS ${t};`).join('\n');
+    const drops = ['bloc_members', 'blocs', 'national_province_votes', 'national_candidates', 'district_towns', 'candidacies', 'contests', 'persons', 'cities', 'provinces', 'regions'].map(t => `DROP TABLE IF EXISTS ${t};`).join('\n');
     fs.writeFileSync(path.join(D1DIR, '000-schema.sql'), drops + '\n' + fs.readFileSync('db/schema.sql', 'utf8'));
     d1.forEach((c, i) => fs.writeFileSync(path.join(D1DIR, `${String(i + 1).padStart(3, '0')}-data.sql`), c.join('\n') + '\n'));
     log(`  ${d1.length} D1 chunks`);
