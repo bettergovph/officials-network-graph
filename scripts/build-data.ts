@@ -480,7 +480,7 @@ async function main() {
 
     // ----- web shards -----
     log('writing web shards');
-    fs.rmSync(PUB, { recursive: true, force: true });
+    for (const d of ['prov', 'people', 'national', 'winners']) fs.rmSync(path.join(PUB, d), { recursive: true, force: true }); // geo/ is build-geo's; leave it
     const byProv = new Map<string, Contest[]>();
     for (const k of contests) (byProv.get(k.prov) ?? byProv.set(k.prov, []).get(k.prov)!).push(k);
     const personById = new Map(persons.map(p => [p.id, p]));
