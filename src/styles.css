@@ -294,6 +294,12 @@ tr.won { background: color-mix(in oklab, var(--win) 9%, transparent) }
 .tabs a:last-child { border-right: 0 }
 .tabs a[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 600 }
 .note { font-size: 12px; color: var(--mute); max-width: 720px }
+.page.narrow { max-width: 820px }
+.lede { font-size: 16px; color: var(--mute); max-width: 700px; margin: 6px 0 18px }
+.prose { line-height: 1.6; max-width: 760px }
+ul.prose, ol.prose { padding-left: 22px }
+.prose li { margin: 6px 0 }
+.cite li { font-size: 13px }
 .searchform { display: flex; gap: 8px; margin: 8px 0 18px }
 .searchform input { flex: 1; max-width: 520px }
 code { font-family: var(--mono); font-size: 11px; background: var(--panel2); padding: 1px 5px; border-radius: 4px }
