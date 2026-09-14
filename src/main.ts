@@ -6,6 +6,7 @@ import { national } from './views/national';
 import { officials } from './views/officials';
 import { regional } from './views/regional';
 import { about } from './views/about';
+import { developers } from './views/developers';
 import { mountDynasties } from './views/dynasties';
 
 type View = (root: HTMLElement, params: string[], query: URLSearchParams) => void | Promise<void> | (() => void);
@@ -22,6 +23,7 @@ const routes: { pattern: RegExp; view: View; nav?: string }[] = [
     { pattern: /^\/search\/?$/, view: (root, _p, q) => search(root, q), nav: 'officials' },
     { pattern: /^\/dynasties\/?$/, view: root => mountDynasties(root), nav: 'dynasties' },
     { pattern: /^\/about\/?$/, view: root => about(root), nav: 'about' },
+    { pattern: /^\/(?:developers|api-docs)\/?$/, view: root => developers(root), nav: 'developers' },
 ];
 
 const view = document.getElementById('view')!;

@@ -38,7 +38,7 @@ export async function about(root: HTMLElement) {
   </ul>
 
   <h2>API and MCP</h2>
-  <p class="prose">Everything on this site is available as a read-only JSON API under <code>/api/v1</code>, and as a Model Context Protocol server at <code>/mcp</code> that AI assistants can query directly: people, contests, surname blocs, national results, and the coverage report. Both carry the source citation and data vintage in every response. See the <a href="https://github.com/bettergovph/officials-network-graph/blob/main/docs/api.md" target="_blank" rel="noopener noreferrer">API documentation</a>.</p>
+  <p class="prose">Everything on this site is available as a read-only JSON API under <code>/api/v1</code>, and as a Model Context Protocol server at <code>/mcp</code> that AI assistants can query directly: people, contests, surname blocs, national results, and the coverage report. Both carry the source citation and data vintage in every response. See <a href="/developers">API &amp; MCP</a>.</p>
 
   <h2 id="openhalalan">Open Halalan</h2>
   <p class="prose">Every election result on this site comes from <em>Open Halalan: The Philippine National and Local Election Dataset</em>, compiled and maintained by Robert R. Leung. It gathers COMELEC results for national and local elections into consistent, machine-readable files, and is the reason a site like this can exist. Please cite it, not this site, as the source of any figure you reuse.</p>
