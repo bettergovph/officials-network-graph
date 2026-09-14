@@ -102,3 +102,13 @@ CREATE INDEX IF NOT EXISTS idx_cand_contest ON candidacies(contest_id);
 CREATE INDEX IF NOT EXISTS idx_cand_place ON candidacies(province_id, city_id, year);
 CREATE INDEX IF NOT EXISTS idx_national_year ON national_candidates(year, position);
 CREATE INDEX IF NOT EXISTS idx_npv_prov ON national_province_votes(province_id);
+
+-- Towns whose voters elect a district seat (representatives, board members). borrowed_year is set when the
+-- membership comes from another election because this one has no per-town rows.
+CREATE TABLE IF NOT EXISTS district_towns (
+  contest_id TEXT NOT NULL REFERENCES contests(id),
+  city_id INTEGER NOT NULL REFERENCES cities(id),
+  borrowed_year INTEGER,
+  PRIMARY KEY (contest_id, city_id)
+);
+CREATE INDEX IF NOT EXISTS idx_district_towns_city ON district_towns(city_id);

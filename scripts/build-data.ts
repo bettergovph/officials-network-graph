@@ -39,7 +39,7 @@ type Conf = 'exact' | 'strong' | 'weak' | 'new';
 type Link = 'exact' | 'surname' | 'prefix' | 'winner-only' | 'votes-only' | 'inferred';
 
 interface Cand {
-    year: number; prov: string; city: string; district: string; position: string;
+    year: number; prov: string; city: string; district: string; position: string; unitKey: string;
     last: string; first: string; middle: string; suffix: string; title: string; party: string; sex: string;
     lastKey: string; firstKey: string; midKey: string;
     votes: number | null; won: boolean; ballot: string; link: Link;
@@ -49,13 +49,14 @@ interface Contest {
     id: string; year: number; prov: string; city: string; district: string; position: string;
     cands: Cand[]; seats: number; total: number | null; lastWinner: number | null; runnerUp: number | null;
     margin: number | null; uncontested: boolean; complete: boolean;
+    unitKey: string; towns: string[]; townsYear: number | null; // district membership (towns that vote in it)
 }
 interface Person {
     id: string; last: string; first: string; middle: string; suffix: string; sex: string;
     lastKey: string; firstKey: string; midKey: string; prov: string; cities: Set<string>; cands: Cand[];
 }
 interface VoteCand { // aggregated vote row, pre-link
-    year: number; prov: string; city: string; district: string; position: string;
+    year: number; prov: string; city: string; district: string; position: string; unitKey: string;
     last: string; first: string; suffix: string; middle: string; party: string; title: string; ballot: string; votes: number;
     lastKey: string; firstKey: string; midKey: string; linked: boolean;
 }
@@ -77,7 +78,7 @@ async function ensureRaw() {
 }
 
 // ---------- 1. winners ----------
-interface WinnerRow { year: number; region: string; prov: string; city: string; position: string; last: string; first: string; middle: string; suffix: string; title: string; party: string; sex: string; lastKey: string; firstKey: string; midKey: string }
+interface WinnerRow { year: number; region: string; prov: string; city: string; position: string; unitKey: string; last: string; first: string; middle: string; suffix: string; title: string; party: string; sex: string; lastKey: string; firstKey: string; midKey: string }
 async function loadWinners(): Promise<{ rows: WinnerRow[]; regionOf: Map<string, string> }> {
     const rows: WinnerRow[] = [];
     const regionByYear = new Map<string, [number, string]>();
@@ -92,7 +93,7 @@ async function loadWinners(): Promise<{ rows: WinnerRow[]; regionOf: Map<string,
         let middle = clean(r['Middle Name']!);
         if (isSuffix(middle)) { suffix = suffix || key(middle); middle = ''; }
         rows.push({
-            year, region, prov, city: PROVINCE_LEVEL.has(position) ? '' : clean(r['City']!), position,
+            year, region, prov, city: PROVINCE_LEVEL.has(position) ? '' : clean(r['City']!), position, unitKey: '',
             last, first, middle, suffix, title: clean(r['Title']!), party: clean(r['Party']!), sex: clean(r['Sex']!),
             lastKey: key(last), firstKey: key(first), midKey: key(middle),
         });
@@ -103,11 +104,24 @@ async function loadWinners(): Promise<{ rows: WinnerRow[]; regionOf: Map<string,
 }
 
 // ---------- 2. vote counts ----------
+/**
+ * District races name their unit in raw_position: "CEBU - FIRST LEGDIST" (province district) or
+ * "CEBU - CITY OF CEBU - FIRST LEGDIST" (a city's own district). Returns the city part, normalised, or ''.
+ */
+function parseUnit(rawPosition: string): string {
+    const m = clean(rawPosition).match(/^(.*)\s-\s([A-ZÑ]+)\s(LEGDIST|PROVDIST)$/);
+    if (!m) return '';
+    const parts = m[1]!.split(' - ');
+    if (parts.length < 2) return '';
+    return key(parts.slice(1).join(' - ')).replace(/^CITY OF /, '').replace(/ CITY$/, '').trim();
+}
+export type Membership = Map<string, Set<string>>; // year|prov|position|unitKey|district -> towns
 interface NatCand { year: number; position: string; name: string; party: string; votes: number; byProv: Map<string, number> }
 async function loadVotes(regionOf: Map<string, string>) {
     const local = new Map<string, VoteCand>();
     const national = new Map<string, NatCand>();
     const perCityRaces = new Set<string>(), totalRaces = new Set<string>();
+    const membership: Membership = new Map();
     let n = 0;
     for await (const r of readCSV(VOTES)) {
         n++;
@@ -129,19 +143,21 @@ async function loadVotes(regionOf: Map<string, string>) {
         if (!prov) continue;
         const provLevel = PROVINCE_LEVEL.has(position);
         const rawCity = clean(r['city']!);
+        const unitKey = provLevel ? parseUnit(r['raw_position']!) : '';
+        const district = clean(r['district']!);
+        if (provLevel && rawCity && district) (membership.get(`${year}|${prov}|${position}|${unitKey}|${district}`) ?? membership.set(`${year}|${prov}|${position}|${unitKey}|${district}`, new Set()).get(`${year}|${prov}|${position}|${unitKey}|${district}`)!).add(rawCity);
         // 2010 reports province races both as a province total (blank city) and per town; keep the two apart so the totals can win below.
         if (provLevel && rawCity) perCityRaces.add(`${year}|${prov}|${position}`); else if (provLevel) totalRaces.add(`${year}|${prov}|${position}`);
         const city = provLevel ? '' : rawCity;
-        const district = clean(r['district']!);
         let { first, suffix } = splitFirst(r['first_name']!);
         const last = clean(r['last_name']!);
         let middle = clean(r['middle_name']!);
         if (isSuffix(middle)) { suffix = suffix || key(middle); middle = ''; }
         const lastKey = key(last), firstKey = key(first), midKey = key(middle);
-        const k = `${year}|${prov}|${city}|${district}|${position}|${lastKey}|${firstKey}|${midKey}|${suffix}` + (provLevel ? `|${rawCity ? 'c' : 't'}` : '');
+        const k = `${year}|${prov}|${city}|${district}|${position}|${unitKey}|${lastKey}|${firstKey}|${midKey}|${suffix}` + (provLevel ? `|${rawCity ? 'c' : 't'}` : '');
         let c = local.get(k);
         if (!c) {
-            c = { year, prov, city, district, position, last, first, suffix, middle, party: clean(r['party']!), title: clean(r['title']!), ballot: clean(r['candidate_name']!), votes: 0, lastKey, firstKey, midKey, linked: false };
+            c = { year, prov, city, district, position, unitKey, last, first, suffix, middle, party: clean(r['party']!), title: clean(r['title']!), ballot: clean(r['candidate_name']!), votes: 0, lastKey, firstKey, midKey, linked: false };
             local.set(k, c);
         }
         c.votes += votes;
@@ -151,8 +167,8 @@ async function loadVotes(regionOf: Map<string, string>) {
     for (const [k, c] of local) {
         if (k.endsWith('|c') && totalRaces.has(`${c.year}|${c.prov}|${c.position}`)) { local.delete(k); dropped++; }
     }
-    log(`  ${n} vote rows read: ${local.size} local candidacies (${dropped} per-town duplicates of province totals dropped), ${national.size} national candidacies`);
-    return { local: [...local.values()], national: [...national.values()] };
+    log(`  ${n} vote rows read: ${local.size} local candidacies (${dropped} per-town duplicates of province totals dropped), ${national.size} national candidacies, ${membership.size} district memberships`);
+    return { local: [...local.values()], national: [...national.values()], membership };
 }
 
 // ---------- 2b. town-name variants ----------
@@ -205,26 +221,37 @@ const firstCompatible = (a: string, b: string) => {
     return Math.min(ta.length, tb.length) >= 3 && (ta.startsWith(tb) || tb.startsWith(ta));
 };
 
-function buildContests(winners: WinnerRow[], votes: VoteCand[]) {
+function buildContests(winners: WinnerRow[], votes: VoteCand[], membership: Membership) {
     const contests = new Map<string, Contest>();
+    // A city that owns its own district ("CITY OF CEBU - FIRST LEGDIST") becomes that contest's city.
+    const cityNames = new Map<string, string[]>();
+    for (const r of [...winners, ...votes]) if (r.city) { const l = cityNames.get(r.prov) ?? cityNames.set(r.prov, []).get(r.prov)!; if (!l.includes(r.city)) l.push(r.city); }
+    const cityKeyOf = (n: string) => key(n).replace(/^CITY OF /, '').replace(/ CITY$/, '').trim();
+    const unitCity = (prov: string, unitKey: string) => {
+        if (!unitKey) return '';
+        const names = cityNames.get(prov) ?? [];
+        return names.find(n => cityKeyOf(n) === unitKey) ?? names.find(n => cityKeyOf(n).startsWith(unitKey + ' ') || unitKey.startsWith(cityKeyOf(n) + ' ')) ?? names.find(n => cityKeyOf(n).replace(/ /g, '') === unitKey.replace(/ /g, '')) ?? '';
+    };
+    for (const v of votes) if (v.unitKey) { const c = unitCity(v.prov, v.unitKey); if (c) v.city = c; }
     const contestId = (c: { year: number; prov: string; city: string; district: string; position: string }) =>
         `${c.year}-${slug(c.prov)}-${c.city ? slug(c.city) : '_'}-${c.district ? slug(c.district) : '_'}-${POSCODE[c.position] ?? slug(c.position)}`;
-    const getContest = (c: { year: number; prov: string; city: string; district: string; position: string }) => {
+    const getContest = (c: { year: number; prov: string; city: string; district: string; position: string; unitKey: string }) => {
         const id = contestId(c);
         let k = contests.get(id);
-        if (!k) { k = { id, year: c.year, prov: c.prov, city: c.city, district: c.district, position: c.position, cands: [], seats: 0, total: null, lastWinner: null, runnerUp: null, margin: null, uncontested: false, complete: false }; contests.set(id, k); }
+        if (!k) { k = { id, year: c.year, prov: c.prov, city: c.city, district: c.district, position: c.position, unitKey: c.unitKey, cands: [], seats: 0, total: null, lastWinner: null, runnerUp: null, margin: null, uncontested: false, complete: false, towns: [], townsYear: null }; contests.set(id, k); }
         return k;
     };
-    // vote candidates grouped by race (ignoring district, which the winners file lacks)
+    // vote candidates grouped by race (ignoring district and unit, which the winners file lacks)
+    const raceOf = (r: { year: number; prov: string; city: string; position: string }) => `${r.year}|${r.prov}|${PROVINCE_LEVEL.has(r.position) ? '' : r.city}|${r.position}`;
     const byRace = new Map<string, VoteCand[]>();
-    for (const v of votes) { const k = `${v.year}|${v.prov}|${v.city}|${v.position}`; (byRace.get(k) ?? byRace.set(k, []).get(k)!).push(v); }
+    for (const v of votes) { const k = raceOf(v); (byRace.get(k) ?? byRace.set(k, []).get(k)!).push(v); }
 
     const cands: Cand[] = [];
     const linkStats = new Map<number, Record<Link, number>>();
     const bump = (y: number, l: Link) => { const s = linkStats.get(y) ?? linkStats.set(y, { exact: 0, surname: 0, prefix: 0, 'winner-only': 0, 'votes-only': 0, inferred: 0 }).get(y)!; s[l]++; };
 
     for (const w of winners) {
-        const race = w.year >= FIRST_VOTE_YEAR ? byRace.get(`${w.year}|${w.prov}|${w.city}|${w.position}`) : undefined;
+        const race = w.year >= FIRST_VOTE_YEAR ? byRace.get(raceOf(w)) : undefined;
         let hit: VoteCand | undefined, link: Link = 'winner-only';
         if (race) {
             const open = race.filter(v => !v.linked);
@@ -240,19 +267,20 @@ function buildContests(winners: WinnerRow[], votes: VoteCand[]) {
         let c: Cand;
         if (hit) {
             hit.linked = true;
-            c = { ...base, city: hit.city, district: hit.district, party: w.party || hit.party, votes: hit.votes, ballot: hit.ballot, link };
+            c = { ...base, city: hit.city, district: hit.district, unitKey: hit.unitKey, party: w.party || hit.party, votes: hit.votes, ballot: hit.ballot, link };
             if (!c.middle && hit.middle.length > 2) c.middle = hit.middle, c.midKey = hit.midKey;
         } else {
             // Attach to the race's only contest when there is exactly one; otherwise a district-less contest.
-            const districts = race ? [...new Set(race.map(v => v.district))] : [];
-            c = { ...base, city: w.city, district: districts.length === 1 ? districts[0]! : '', party: w.party, votes: null, ballot: '', link };
+            const districts = race ? [...new Set(race.map(v => `${v.unitKey}|${v.district}|${v.city}`))] : [];
+            const only = districts.length === 1 ? districts[0]!.split('|') as [string, string, string] : null;
+            c = { ...base, city: only ? only[2] : w.city, district: only ? only[1] : '', unitKey: only ? only[0] : '', party: w.party, votes: null, ballot: '', link };
         }
         bump(w.year, link);
         c.contest = getContest(c); c.contest.cands.push(c); cands.push(c);
     }
     for (const v of votes) {
         if (v.linked) continue;
-        const c: Cand = { year: v.year, prov: v.prov, city: v.city, district: v.district, position: v.position, last: v.last, first: v.first, middle: v.middle.length > 2 ? v.middle : '', suffix: v.suffix, title: v.title, party: v.party, sex: '', lastKey: v.lastKey, firstKey: v.firstKey, midKey: v.middle.length > 2 ? v.midKey : '', votes: v.votes, won: false, ballot: v.ballot, link: 'votes-only' };
+        const c: Cand = { year: v.year, prov: v.prov, city: v.city, district: v.district, position: v.position, unitKey: v.unitKey, last: v.last, first: v.first, middle: v.middle.length > 2 ? v.middle : '', suffix: v.suffix, title: v.title, party: v.party, sex: '', lastKey: v.lastKey, firstKey: v.firstKey, midKey: v.middle.length > 2 ? v.midKey : '', votes: v.votes, won: false, ballot: v.ballot, link: 'votes-only' };
         bump(v.year, 'votes-only');
         c.contest = getContest(c); c.contest.cands.push(c); cands.push(c);
     }
@@ -271,6 +299,18 @@ function buildContests(winners: WinnerRow[], votes: VoteCand[]) {
         const ranked = k.cands.filter(c => c.votes != null).sort((a, b) => b.votes! - a.votes!);
         if (ranked.length < n) continue;
         for (const c of ranked.slice(0, n)) { c.won = true; c.link = 'inferred'; bump(k.year, 'inferred'); }
+    }
+    // District membership: the towns whose voters elect this seat. Years without per-town rows borrow the nearest year's.
+    const byDistrict = new Map<string, Map<number, string[]>>();
+    for (const [mk, towns] of membership) { const [y, prov, position, unitKey, district] = mk.split('|') as [string, string, string, string, string]; const dk = `${prov}|${position}|${unitKey}|${district}`; (byDistrict.get(dk) ?? byDistrict.set(dk, new Map()).get(dk)!).set(+y, [...towns].sort()); }
+    for (const k of contests.values()) {
+        if (!k.district || !PROVINCE_LEVEL.has(k.position)) continue;
+        const years = byDistrict.get(`${k.prov}|${k.position}|${k.unitKey}|${k.district}`);
+        if (!years) continue;
+        const own = years.get(k.year);
+        if (own) { k.towns = own; continue; }
+        const nearest = [...years.keys()].sort((a, b) => Math.abs(a - k.year) - Math.abs(b - k.year) || b - a)[0]!;
+        k.towns = years.get(nearest)!; k.townsYear = nearest;
     }
     // per-contest facts
     for (const k of contests.values()) {
@@ -358,16 +398,17 @@ async function main() {
     const { rows: winners, regionOf } = await loadWinners();
     log(`  ${winners.length} winners, ${regionOf.size} provinces`);
     log('reading vote counts');
-    const { local, national } = await loadVotes(regionOf);
+    const { local, national, membership } = await loadVotes(regionOf);
     // One spelling per town: "M LANG" (2004) and "M'LANG" (2010+) share a slug; keep the latest election's form.
     const canon = new Map<string, [number, string]>();
     for (const r of [...winners, ...local]) { if (!r.city) continue; const k = `${r.prov}|${slug(r.city)}`; const cur = canon.get(k); if (!cur || cur[0] < r.year) canon.set(k, [r.year, r.city]); }
     for (const r of [...winners, ...local]) if (r.city) r.city = canon.get(`${r.prov}|${slug(r.city)}`)![1];
     const aliases = cityAliases([...winners, ...local]);
     for (const r of [...winners, ...local]) if (r.city) r.city = aliases.get(`${r.prov}|${r.city}`) ?? r.city;
+    for (const [mk, towns] of membership) { const prov = mk.split('|')[1]!; const fixed = new Set([...towns].map(t => { const c = canon.get(`${prov}|${slug(t)}`)?.[1] ?? t; return aliases.get(`${prov}|${c}`) ?? c; })); membership.set(mk, fixed); }
     log(`  ${aliases.size} town-name variants merged`);
     log('linking winners to candidates');
-    const { contests, cands, linkStats } = buildContests(winners, local);
+    const { contests, cands, linkStats } = buildContests(winners, local, membership);
     log(`  ${contests.length} contests, ${cands.length} candidacies`);
     log('resolving persons');
     const { persons, confStats } = resolvePersons(cands);
@@ -377,6 +418,7 @@ async function main() {
     const poverty: Record<string, number> = {};
     const POVALIAS: Record<string, string> = { 'TAWI TAWI': 'TAWI-TAWI', 'MAGUINDANAO DEL SUR': 'MAGUINDANAO', 'MAGUINDANAO DEL NORTE': 'MAGUINDANAO', 'DAVAO DE ORO': 'COMPOSTELA VALLEY', 'NCR FIRST DISTRICT': 'NCR, CITY OF MANILA, FIRST DISTRICT', 'NCR SECOND DISTRICT': 'NCR, SECOND DISTRICT', 'NCR THIRD DISTRICT': 'NCR, THIRD DISTRICT', 'NCR FOURTH DISTRICT': 'NCR, FOURTH DISTRICT' };
     if (fs.existsSync('public/poverty.json')) for (const reg of JSON.parse(fs.readFileSync('public/poverty.json', 'utf8')) as { provinces: { province: string; poverty: number }[] }[]) for (const p of reg.provinces) poverty[p.province] = p.poverty;
+    const title = (x: string) => x.toLowerCase().replace(/(^|[\s\-,.'(])(\S)/g, (_m, a: string, b: string) => a + b.toUpperCase()).replace(/\bDe\b/g, 'de').replace(/\bDel\b/g, 'del');
     const provs = [...new Set(cands.map(c => c.prov))].sort();
     const regions = [...new Set(provs.map(p => regionOf.get(p) ?? 'UNKNOWN'))].sort();
     const regionId = new Map(regions.map((r, i) => [r, i + 1]));
@@ -413,6 +455,7 @@ async function main() {
         persons.map(p => { const s = personStats(p); return [p.id, p.last, p.first, p.middle, p.suffix, p.sex, displayName(p), provId.get(p.prov), s.runs, s.wins, s.firstYear, s.lastYear, s.top, p.lastKey, p.firstKey]; }));
     insert('contests', ['id', 'year', 'province_id', 'city_id', 'district', 'position', 'seats', 'candidates', 'total_votes', 'last_winner_votes', 'runner_up_votes', 'margin', 'uncontested', 'complete'],
         contests.map(k => [k.id, k.year, provId.get(k.prov), k.city ? cityId.get(cityKey(k.prov, k.city)) : null, k.district, k.position, k.seats, k.cands.length, k.total, k.lastWinner, k.runnerUp, k.margin, k.uncontested, k.complete]));
+    insert('district_towns', ['contest_id', 'city_id', 'borrowed_year'], contests.flatMap(k => k.towns.map(t => [k.id, cityId.get(cityKey(k.prov, t)) ?? null, k.townsYear]).filter(r => r[1] != null)));
     insert('candidacies', ['id', 'contest_id', 'person_id', 'year', 'province_id', 'city_id', 'position', 'party', 'votes', 'rank', 'won', 'ballot_name', 'match', 'link'],
         cands.map((c, i) => [i + 1, c.contest!.id, c.pid, c.year, provId.get(c.prov), c.city ? cityId.get(cityKey(c.prov, c.city)) : null, c.position, c.party, c.votes, c.rank, c.won, c.ballot, c.conf, c.link]));
     // national
@@ -430,7 +473,7 @@ async function main() {
     if (chunk.length) d1.push(chunk);
     db.close();
     fs.rmSync(D1DIR, { recursive: true, force: true }); fs.mkdirSync(D1DIR, { recursive: true });
-    const drops = ['national_province_votes', 'national_candidates', 'candidacies', 'contests', 'persons', 'cities', 'provinces', 'regions'].map(t => `DROP TABLE IF EXISTS ${t};`).join('\n');
+    const drops = ['national_province_votes', 'national_candidates', 'district_towns', 'candidacies', 'contests', 'persons', 'cities', 'provinces', 'regions'].map(t => `DROP TABLE IF EXISTS ${t};`).join('\n');
     fs.writeFileSync(path.join(D1DIR, '000-schema.sql'), drops + '\n' + fs.readFileSync('db/schema.sql', 'utf8'));
     d1.forEach((c, i) => fs.writeFileSync(path.join(D1DIR, `${String(i + 1).padStart(3, '0')}-data.sql`), c.join('\n') + '\n'));
     log(`  ${d1.length} D1 chunks`);
@@ -462,7 +505,7 @@ async function main() {
                 const cs = ks.flatMap(k => k.cands);
                 return {
                     name: p, slug: slug(p), poverty: poverty[POVALIAS[p] ?? p] ?? null,
-                    cities: cities.filter(c => c.startsWith(p + '|')).map(c => ({ name: c.split('|')[1]!, slug: slug(c.split('|')[1]!) })),
+                    cities: cities.filter(c => c.startsWith(p + '|')).map(c => { const n = c.split('|')[1]!; const latest = years[years.length - 1]!; const cs = ks.filter(k => k.year === latest && k.city === n).flatMap(k => k.cands); const rep = ks.find(k => k.year === latest && k.position === 'MEMBER, HOUSE OF REPRESENTATIVES' && (k.city === n || k.towns.includes(n))); return { name: n, slug: slug(n), seats: cs.filter(x => x.won).length, candidacies: cs.length, district: rep ? (rep.city ? `${title(rep.city)} · ${title(rep.district)}` : title(rep.district)) : '' }; }),
                     seats: cs.filter(c => c.won).length, candidacies: cs.length, persons: new Set(cs.map(c => c.pid)).size,
                     years: Object.fromEntries(years.map(y => [y, { seats: cs.filter(c => c.year === y && c.won).length, candidacies: cs.filter(c => c.year === y).length }])),
                 };
@@ -478,6 +521,7 @@ async function main() {
             name: p, slug: slug(p), region: regionOf.get(p) ?? 'UNKNOWN', poverty: poverty[POVALIAS[p] ?? p] ?? null,
             contests: ks.sort((a, b) => b.year - a.year || a.city.localeCompare(b.city) || posRank(a.position) - posRank(b.position)).map(k => ({
                 id: k.id, year: k.year, city: k.city, district: k.district, position: k.position, seats: k.seats, total: k.total, margin: k.margin, uncontested: k.uncontested, complete: k.complete,
+                ...(k.towns.length ? { towns: k.towns, ...(k.townsYear ? { townsYear: k.townsYear } : {}) } : {}),
                 c: k.cands.map(c => [c.pid, c.party, c.votes, c.won ? 1 : 0, c.rank, c.conf, c.link] as const),
             })),
             persons: Object.fromEntries([...pids].map(id => { const q = personById.get(id)!; const s = personStats(q); return [id, [q.last, q.first, q.middle, q.suffix, q.sex, s.runs, s.wins, q.prov === p ? '' : slug(q.prov)]]; })),
