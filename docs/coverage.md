@@ -41,4 +41,5 @@ Repeat politicians (2+ candidacies): 65,877. Winners of 5+ elections: 4,098.
 - 2010 vote counts cover about two thirds of towns; 2013 about 90%. Missing towns still list winners, without votes.
 - 2025 `rank` in the source is unreliable and is ignored; ranks here are recomputed from votes.
 - Party list rows are organizations, not people, and are only shown as vote totals.
+- Representatives and board members are elected per legislative district. From 2010 the vote file names the district and its towns, and a city with its own district (Cebu City, Quezon City, Mandaue) is treated as that city's contest. Before 2010 the winners file has no district, so a province's representatives sit in one district-less contest and the member towns are borrowed from the nearest later election.
 - Two people with the same surname and first name in the same province but different towns are kept separate; nicknames that are not prefixes ("ATTING" for ROBERTO) create separate persons. See `match` on each candidacy.
