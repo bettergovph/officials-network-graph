@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Surname blocs among Philippine local election winners, 2016-2025: atlas, network graph and ledger views" />
-    <title>Dynasties — Philippine local election winners</title>
+    <meta name="description" content="The political map of the Philippines: every candidate for local office since 2001, who won, who lost, who keeps coming back, and which surnames hold the seats." />
+    <title>Dynasty — the political map of the Philippines</title>
 
-    <meta property="og:title" content="Dynasties — Philippine local election winners" />
+    <meta property="og:title" content="Dynasty — the political map of the Philippines" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://officials.bettergov.ph/" />
     <meta property="og:image" content="https://officials.bettergov.ph/dynasty_sshot.jpg" />
-    <meta property="og:description" content="Surname blocs among Philippine local election winners, 2016-2025: atlas, network graph and ledger views" />
+    <meta property="og:description" content="Every candidate for local office since 2001, who won, who lost, who keeps coming back, and which surnames hold the seats." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
@@ -36,90 +36,29 @@
     <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
 </head>
 
-<body data-dir="atlas">
+<body>
     <div id="app">
-        <header>
-            <div class="brand">
-                <h1>Dynasties</h1><span>Philippine local election winners</span>
-            </div>
-            <nav id="review" aria-label="Views">
-                <button data-dir="atlas">Atlas</button>
-                <button data-dir="network">Network</button>
-                <button data-dir="ledger">Ledger</button>
+        <header class="top">
+            <a class="brand" href="/"><b>Dynasty</b><span>Philippine political map</span></a>
+            <nav class="topnav" aria-label="Sections">
+                <a href="/" data-nav="map">Map</a>
+                <a href="/people" data-nav="people">People</a>
+                <a href="/national" data-nav="national">National</a>
+                <a href="/dynasties" data-nav="dynasties">Dynasties</a>
             </nav>
-            <div class="ctl"><label for="yearseg">Year</label>
-                <div class="seg" id="yearseg"></div>
-            </div>
-            <div class="ctl"><label for="region">Scope</label>
-                <select id="region">
-                    <option value="">Whole country</option>
-                </select>
-                <span id="provpill" class="pill" hidden></span>
-            </div>
-            <div class="ctl"><label for="minseg">Rule</label>
-                <div class="seg" id="minseg">
-                    <button data-min="2" aria-pressed="true">≥2 seats</button>
-                    <button data-min="3">≥3</button>
-                    <button data-min="5">≥5</button>
-                </div>
-            </div>
-            <input id="q" type="search" placeholder="Search surname…" autocomplete="off" aria-label="Search surname">
+            <form id="topsearch" class="topsearch" role="search">
+                <input type="search" name="q" placeholder="Search a politician or place…" autocomplete="off" aria-label="Search">
+            </form>
         </header>
-
-        <main>
-            <section class="panel" id="map">
-                <div class="ph">
-                    <h2>Where dynasties hold seats</h2><small>bubble = dynasty seats · color = share of province</small>
-                </div>
-                <div class="body" style="padding:0"></div>
-                <div class="legend" id="maplegend"></div>
-                <div class="hint">click a province to focus</div>
-            </section>
-
-            <section class="panel" id="graph">
-                <div class="body" style="padding:0"></div>
-                <div class="legend">
-                    <div><i style="background:var(--sur)"></i>surname (size = seats)</div>
-                    <div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div>
-                    <div><i style="background:var(--ppl)"></i>official (surname)</div>
-                    <div><i style="background:var(--amber)"></i>official (via middle name)</div>
-                    <div><i style="background:var(--prov)"></i>province</div>
-                    <div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div>
-                </div>
-                <div class="hint">drag · scroll to zoom · click surname</div>
-            </section>
-
-            <section class="panel" id="rank">
-                <div class="ph">
-                    <h2>Largest surname blocs</h2><small class="sp" id="rankmeta"></small>
-                </div>
-                <div class="stats" id="stats"></div>
-                <div class="body" id="rankbody"></div>
-            </section>
-
-            <section class="panel" id="table">
-                <div class="ph">
-                    <h2>All blocs</h2><small class="sp" id="tablemeta"></small>
-                </div>
-                <div class="body" id="tablebody"></div>
-            </section>
-
-            <section class="panel" id="detail">
-                <div id="detailbody" style="display:flex;flex-direction:column;min-height:0;height:100%"></div>
-            </section>
-        </main>
-
-        <footer>
-            <span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name.
-                Local posts only (national offices excluded). Shared names may not mean kinship.</span>
-            <span>Data: <a href="https://robertrleung.github.io/OpenHalalan/" target="_blank" rel="noopener noreferrer">Open Halalan</a>
+        <main id="view"></main>
+        <footer class="site">
+            <span>Local election data: <a href="https://robertrleung.github.io/OpenHalalan/" target="_blank" rel="noopener noreferrer">Open Halalan</a>
                 · Poverty: <a href="https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true" target="_blank" rel="noopener noreferrer">PSA</a>
-                · Code: <a href="https://github.com/bettergovph/officials-network-graph" target="_blank" rel="noopener noreferrer">BetterGovPH</a></span>
+                · Code: <a href="https://github.com/bettergovph/officials-network-graph" target="_blank" rel="noopener noreferrer">BetterGovPH</a>
+                · <a href="https://github.com/bettergovph/officials-network-graph/blob/main/docs/coverage.md" target="_blank" rel="noopener noreferrer">Coverage &amp; caveats</a></span>
         </footer>
     </div>
-    <div class="spin" id="spin">loading winners…</div>
-
-    <script type="module" src="/src/index.ts"></script>
+    <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>

@@ -1,38 +1,49 @@
-## Dynasties: Philippine Local Election Winners, 2016-2025
+## Dynasty: the political map of the Philippines, 2001-2025
 
-Surname blocs among elected Philippine local officials, built from the 2016, 2019, 2022 and 2025 election winners.
-
-A *bloc* is the set of officials in one province who carry a surname as their last name or middle name. Blocs are ranked by size so potential political dynasties can be spotted at a glance. Three views share one set of controls (year, region or province scope, minimum bloc size, surname search):
-
-- **Atlas**: a map where each province bubble is sized by the number of officials in blocs and colored by their share of the province's seats.
-- **Network**: a force-directed graph linking provinces, surnames, officials and cities.
-- **Ledger**: a sortable table of every bloc with seats, share, highest post, parties, votes and poverty incidence.
-
-Clicking a surname anywhere opens a detail panel listing each official, their posts by year, linked surnames in the same province, and the same surname in other provinces.
+Every candidate for local office in the Philippines since 2001, who won, who lost, who keeps coming back, and which surnames hold the seats. Browse by region, province and town, look up a politician, or open the surname-bloc analysis.
 
 View the project at [https://officials.bettergov.ph](https://officials.bettergov.ph).
 
-This project uses [Node.js](https://nodejs.org), [TypeScript](http://www.typescriptlang.org/), [D3](https://d3js.org/), [Leaflet](https://leafletjs.com/) with [OpenStreetMap](https://www.openstreetmap.org/) tiles, and [Vite](https://vite.dev).
+### What is in it
 
-### Installation and Build
+- **Map**: national overview, regions, provinces and towns. Every contest with its candidates, votes, vote share, margin and result.
+- **People**: one record per politician with their full election history, and lists of repeat politicians by wins, runs and losses.
+- **National**: presidential, vice presidential, senate and party-list totals per election, plus each province's share on its page.
+- **Dynasties**: surname blocs per province in three views (atlas map, network graph, ledger table).
+- **Search**: politicians by surname or "Surname, First name", and places.
 
-1. Install Node.js/NPM
-2. Type ```npm install``` in console.
-3. Type ```npm run build``` in console.
-4. Type ```npx vite``` in console. It will give a localhost address you can test locally on.
+A *bloc* is the set of officials in one province who carry a surname as last name or middle name. People are matched across elections by surname, first name and middle name within a province; see [docs/coverage.md](docs/coverage.md) for how well the sources join and the known gaps.
 
-### Deployment
-This repository is configured for Cloudflare Workers Static Assets via ```wrangler.jsonc```.
+### How it is built
+
+- `scripts/build-data.ts` downloads the two [Open Halalan](https://robertrleung.github.io/OpenHalalan/) releases (winners 2001-2025 and vote counts 2010-2025), links winners to vote rows, resolves people, and writes:
+  - `data/dynasty.sqlite`: the full relational database (`db/schema.sql`), not committed;
+  - `data/d1/*.sql`: the same data as chunked SQL for Cloudflare D1, not committed;
+  - `public/data/**`: gzipped shards the site loads on demand (committed, about 17 MB);
+  - `docs/coverage.md`: coverage report.
+- The site is a Vite + TypeScript single-page app (`src/`) using [D3](https://d3js.org/) and [Leaflet](https://leafletjs.com/) with OpenStreetMap tiles. Pages read the static shards; search uses the API when deployed and falls back to a static index otherwise.
+- `worker/index.ts` is a Cloudflare Worker serving the built site and a small JSON API over D1 (`/api/search`, `/api/person/:id`, `/api/contest/:id`, `/api/place/:province[/:city]`, `/api/persons`, `/api/stats`).
+
+### Development
 
 ```bash
-npm run deploy
+npm install
+npm run data        # download sources, build data/dynasty.sqlite, data/d1, public/data, docs/coverage.md (~1 min)
+npm run dev         # Vite dev server (static pages work; /api falls back to the static index)
+npm run check       # type-check the app and the worker
+npm run preview     # production build served by wrangler dev, with the API
 ```
 
-The Cloudflare deployment serves the Vite build output from ```./dist``` and uses SPA fallback handling for direct route loads.
+### Deployment
+
+Cloudflare Workers with static assets and a D1 database named `dynasty`, configured in `wrangler.jsonc`. With `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set:
+
+```bash
+npm run d1:import   # load data/d1/*.sql into D1 (drops and recreates the tables)
+npm run deploy      # build and deploy the worker
+```
 
 ### Data Sources
 
-- 2016-2025 Election Data: [Open Halalan: The Philippine National and Local Election Dataset](https://robertrleung.github.io/OpenHalalan/)
-- Poverty Data: [Philippine Statistics Authority](https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true)
-- 2004-2016 data from the [Ateneo Policy Center (APC) Political Dynasty Dataset](https://www.inclusivedemocracy.ph/data-and-infographics) remains in `public/` but is not used by the current views, since it lacks the middle-name and vote fields the bloc model depends on.
-
+- 2001-2025 winners and 2010-2025 candidates and votes: [Open Halalan: The Philippine National and Local Election Dataset](https://robertrleung.github.io/OpenHalalan/)
+- Poverty incidence: [Philippine Statistics Authority](https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true)

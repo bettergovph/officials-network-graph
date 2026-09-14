@@ -1,20 +1,24 @@
 {
-  "name": "sigmatest",
+  "name": "dynasty",
   "version": "1.0.0",
-  "description": "",
+  "description": "The political map of the Philippines: candidates, winners and dynasties, 2001-2025",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "vite build",
-    "deploy": "npm run build && wrangler deploy",
-    "preview": "npm run build && wrangler dev"
+    "preview": "npm run build && wrangler dev",
+    "data": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-data.ts",
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p worker/tsconfig.json",
+    "d1:import": "bash scripts/d1-import.sh",
+    "d1:import:local": "bash scripts/d1-import.sh --local",
+    "deploy": "npm run build && wrangler deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260914.1",
     "@types/d3": "^7.4.3",
     "@types/leaflet": "^1.9.22",
     "typescript": "^5.9.3",

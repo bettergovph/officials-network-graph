@@ -1,15 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "officials",
+  "name": "dynasty",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-07-10",
-  "observability": {
-    "enabled": true
-  },
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
   },
-  "compatibility_flags": [
-    "nodejs_compat"
+  "d1_databases": [
+    { "binding": "DB", "database_name": "dynasty", "database_id": "ef61382e-9282-41df-8345-f22d4e38093a" }
   ]
 }
