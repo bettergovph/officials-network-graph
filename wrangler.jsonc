@@ -5,6 +5,12 @@
   "compatibility_date": "2026-07-10",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Custom domains. officials.bettergov.ph is still attached to the older "officials" worker; detach it there
+  // (or delete that worker) before uncommenting, otherwise the deploy fails.
+  "routes": [
+    { "pattern": "dynasties.bettergov.ph", "custom_domain": true }
+    // , { "pattern": "officials.bettergov.ph", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

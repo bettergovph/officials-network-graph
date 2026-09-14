@@ -31,18 +31,20 @@ const TOOLS: [string, string][] = [
     ['get_coverage', 'What each election contains and the known gaps'],
 ];
 
+const API_BASE = 'https://officials.bettergov.ph';
+
 export function developers(root: HTMLElement) {
-    const origin = location.origin;
+    const origin = API_BASE;
     root.innerHTML = `<div class="page narrow">${crumbs([{ label: 'Philippines', href: '/regional' }, { label: 'API & MCP' }])}
   <h1>API and MCP</h1>
-  <p class="lede">Everything on this site is available as a read-only JSON API and as a Model Context Protocol server for AI assistants. No key needed, CORS open, cached at the edge for a day.</p>
+  <p class="lede">Everything on this site is available as a read-only JSON API and as a Model Context Protocol server for AI assistants, served from <code>officials.bettergov.ph</code>. No key needed, CORS open, cached at the edge for a day.</p>
   <div class="card pad"><div class="kicker">Base URL</div><code class="block">${esc(origin)}</code></div>
 
   <h2>REST, <code>/api/v1</code></h2>
   <p class="prose">Every response is an envelope: <code>{ "data": …, "meta": { "api_version", "data_vintage", "elections", "source", "license", "docs" } }</code>. Places accept a slug (<code>cebu</code>, <code>lapu-lapu</code>) or a name; positions accept <code>governor</code>, <code>vice governor</code>, <code>representative</code>, <code>board member</code>, <code>mayor</code>, <code>vice mayor</code>, <code>councilor</code>. Contest ids look like <code>2025-cebu-cebu-first-rep</code>.</p>
   <table class="list api"><thead><tr><th>Endpoint</th><th>Returns</th></tr></thead><tbody>${ROUTES.map(([r, d]) => `<tr><td><code>${esc(r)}</code></td><td class="mute">${esc(d)}</td></tr>`).join('')}</tbody></table>
   <h3>Try it</h3>
-  <ul class="prose links">${EXAMPLES.map(e => `<li><a href="${esc(e)}" target="_blank" rel="noopener">${esc(e)}</a></li>`).join('')}</ul>
+  <ul class="prose links">${EXAMPLES.map(e => `<li><a href="${esc(origin + e)}" target="_blank" rel="noopener">${esc(origin + e)}</a></li>`).join('')}</ul>
 
   <h2>MCP, <code>POST /mcp</code></h2>
   <p class="prose">A Model Context Protocol server over streamable HTTP: stateless JSON responses, no server-sent events. Add it to any MCP client as a remote server:</p>

@@ -1,6 +1,6 @@
 # Dynasties API and MCP server
 
-Base URL: `https://dynasty.bettergov.workers.dev`. Read-only, no authentication, CORS open. Responses are cached at the edge for a day; the data changes once per election.
+Base URL: `https://officials.bettergov.ph` (the site itself is at `https://dynasties.bettergov.ph`; the same routes also answer there). Read-only, no authentication, CORS open. Responses are cached at the edge for a day; the data changes once per election.
 
 Every REST response is an envelope:
 
@@ -47,7 +47,7 @@ Examples:
 A Model Context Protocol server over streamable HTTP (JSON responses, stateless, no server-sent events). Add it to an MCP client as a remote server:
 
 ```json
-{ "mcpServers": { "dynasties": { "url": "https://dynasty.bettergov.workers.dev/mcp" } } }
+{ "mcpServers": { "dynasties": { "url": "https://officials.bettergov.ph/mcp" } } }
 ```
 
 Tools: `search_officials`, `get_official`, `list_contests`, `get_contest`, `get_blocs`, `compare_elections`, `get_national_results`, `get_coverage`. Each result carries the source citation and data vintage; the server instructions tell the model that shared surnames indicate, not prove, kinship, and that votes exist only from 2010.
@@ -55,7 +55,7 @@ Tools: `search_officials`, `get_official`, `list_contests`, `get_contest`, `get_
 Raw JSON-RPC example:
 
 ```bash
-curl -s https://dynasty.bettergov.workers.dev/mcp -H 'content-type: application/json' \
+curl -s https://officials.bettergov.ph/mcp -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_blocs","arguments":{"province":"cebu","year":"2025","min_members":3}}}'
 ```
 

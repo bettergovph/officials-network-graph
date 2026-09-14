@@ -2,7 +2,7 @@
 
 Every candidate for local office in the Philippines since 2001, who won, who lost, who keeps coming back, and which surnames hold the seats. Browse by region, province and town, look up a politician, or open the surname-bloc analysis.
 
-View the project at [https://officials.bettergov.ph](https://officials.bettergov.ph).
+View the project at [https://dynasties.bettergov.ph](https://dynasties.bettergov.ph). The API and MCP server answer at [https://officials.bettergov.ph](https://officials.bettergov.ph).
 
 ### What is in it
 
@@ -27,7 +27,7 @@ A *bloc* is the set of officials in one province who carry a surname as last nam
 
 ### API and MCP
 
-The same Worker serves a read-only JSON API under `/api/v1` and a Model Context Protocol server at `/mcp`, both over the D1 database. See [docs/api.md](docs/api.md).
+The same Worker serves a read-only JSON API under `/api/v1` and a Model Context Protocol server at `/mcp`, both over the D1 database, on `officials.bettergov.ph`. See [docs/api.md](docs/api.md) or the site's API & MCP page.
 
 ### Development
 

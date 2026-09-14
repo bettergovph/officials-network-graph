@@ -7,9 +7,12 @@
 export interface Env { DB: D1Database; ASSETS: Fetcher }
 
 const VERSION = '1.0.0';
+const API_HOST = 'officials.bettergov.ph'; // API and MCP live here; the site lives on SITE_HOST. The workers.dev host serves both.
+const SITE_HOST = 'dynasties.bettergov.ph';
+const API_BASE = `https://${API_HOST}`;
 const SOURCE = 'Leung, Robert R. Open Halalan: The Philippine National and Local Election Dataset. https://robertrleung.github.io/OpenHalalan/';
 const LICENSE = 'Derived data CC0 1.0 by BetterGov.ph; cite Open Halalan for election results and PSA for poverty incidence.';
-const DOCS = 'https://github.com/bettergovph/officials-network-graph/blob/main/docs/api.md';
+const DOCS = 'https://dynasties.bettergov.ph/developers';
 const POSITIONS = ['GOVERNOR', 'VICE GOVERNOR', 'MEMBER, HOUSE OF REPRESENTATIVES', 'PROVINCIAL BOARD MEMBER', 'MAYOR', 'VICE MAYOR', 'COUNCILOR'];
 const POS_ALIAS: Record<string, string> = { gov: 'GOVERNOR', governor: 'GOVERNOR', vgov: 'VICE GOVERNOR', 'vice governor': 'VICE GOVERNOR', rep: 'MEMBER, HOUSE OF REPRESENTATIVES', representative: 'MEMBER, HOUSE OF REPRESENTATIVES', congressman: 'MEMBER, HOUSE OF REPRESENTATIVES', house: 'MEMBER, HOUSE OF REPRESENTATIVES', board: 'PROVINCIAL BOARD MEMBER', 'board member': 'PROVINCIAL BOARD MEMBER', mayor: 'MAYOR', vmayor: 'VICE MAYOR', 'vice mayor': 'VICE MAYOR', councilor: 'COUNCILOR', councillor: 'COUNCILOR' };
 
@@ -202,7 +205,7 @@ async function rest(url: URL, env: Env): Promise<Response> {
     const v1 = parts[0] === 'v1'; if (v1) parts.shift();
     const [head, a, b, c] = parts;
     const page = clampInt(q.get('page'), 1, 1, 100000), limit = clampInt(q.get('limit'), 50, 1, 200);
-    if (!head) return envelope(env, { name: 'Dynasties API', endpoints: ['/api/v1/stats', '/api/v1/coverage', '/api/v1/places', '/api/v1/places/{province}', '/api/v1/places/{province}/{town}', '/api/v1/contests?year&province&town&position&district&candidates=1&page&limit', '/api/v1/contests/{id}', '/api/v1/persons?q=&province', '/api/v1/persons?province&min_runs&sort=wins|runs|losses&page', '/api/v1/persons/{id}', '/api/v1/national/{year}', '/api/v1/national/{year}/provinces/{province}', '/api/v1/blocs?year|all&province&region&min&surname&members=1&page', '/api/v1/blocs/{id}', '/api/v1/compare?province&town&position&district', 'POST /mcp (Model Context Protocol, streamable HTTP)'] });
+    if (!head) return envelope(env, { name: 'Dynasties API', endpoints: ['/api/v1/stats', '/api/v1/coverage', '/api/v1/places', '/api/v1/places/{province}', '/api/v1/places/{province}/{town}', '/api/v1/contests?year&province&town&position&district&candidates=1&page&limit', '/api/v1/contests/{id}', '/api/v1/persons?q=&province', '/api/v1/persons?province&min_runs&sort=wins|runs|losses&page', '/api/v1/persons/{id}', '/api/v1/national/{year}', '/api/v1/national/{year}/provinces/{province}', '/api/v1/blocs?year|all&province&region&min&surname&members=1&page', '/api/v1/blocs/{id}', '/api/v1/compare?province&town&position&district', 'POST /mcp (Model Context Protocol, streamable HTTP)'], base_url: API_BASE, site: `https://${SITE_HOST}` });
     switch (head) {
         case 'stats': return envelope(env, await api.stats(db));
         case 'coverage': return envelope(env, await api.coverage(db));
@@ -282,6 +285,11 @@ export default {
         const url = new URL(request.url);
         if (request.method === 'OPTIONS' && (url.pathname.startsWith('/api') || url.pathname === '/mcp')) return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version', 'access-control-max-age': '86400' } });
         if (url.pathname === '/mcp' || url.pathname === '/mcp/') return mcp(request, env);
+        if (url.hostname === API_HOST && !url.pathname.startsWith('/api')) {
+            // The API host has no pages: its root is the endpoint index, everything else goes to the site.
+            if (url.pathname === '/' || url.pathname === '') return rest(new URL('/api/v1', url), env);
+            return Response.redirect(`https://${SITE_HOST}${url.pathname}${url.search}`, 302);
+        }
         if (!url.pathname.startsWith('/api')) return env.ASSETS.fetch(request);
         if (request.method !== 'GET') return errorResponse(new ApiError(405, 'method not allowed'));
         try { return await rest(url, env); } catch (e) { return errorResponse(e); }
