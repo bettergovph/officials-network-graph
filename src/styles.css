@@ -96,9 +96,9 @@ body[data-dir="network"] #rank { position: absolute; left: 16px; top: 16px; widt
 body[data-dir="network"] #map, body[data-dir="network"] #table { display: none }
 body[data-dir="network"] .legend { left: 412px }
 
-body[data-dir="ledger"] .dyn-main { grid-template-columns: minmax(340px, .9fr) minmax(0, 1.8fr) }
-body[data-dir="ledger"] #rank { grid-column: 1 }
-body[data-dir="ledger"] #table { grid-column: 2 }
+body[data-dir="ledger"] .dyn-main { grid-template-columns: minmax(0, 1.8fr) minmax(340px, .9fr) }
+body[data-dir="ledger"] #table { grid-column: 1 }
+body[data-dir="ledger"] #rank { grid-column: 2 }
 body[data-dir="ledger"] #map, body[data-dir="ledger"] #graph { display: none }
 
 @media (max-width:900px) {
