@@ -4,17 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Network Graph Visualization of Philippine elected officials 2004-2025" />
-    <title>Philippine Elected Officials</title>
+    <meta name="description" content="Surname blocs among Philippine local election winners, 2016-2025: atlas, network graph and ledger views" />
+    <title>Dynasties — Philippine local election winners</title>
 
-    <meta property="og:title" content="Philippine Elected Officials Network Graph" />
+    <meta property="og:title" content="Dynasties — Philippine local election winners" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://officials.bettergov.ph/" />
     <meta property="og:image" content="https://officials.bettergov.ph/dynasty_sshot.jpg" />
-    <meta property="og:description" content="Network Graph Visualization of Philippine elected officials 2004-2025" />
+    <meta property="og:description" content="Surname blocs among Philippine local election winners, 2016-2025: atlas, network graph and ledger views" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet">
 
     <!-- favicon -->
@@ -36,123 +36,89 @@
     <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
 </head>
 
-<body>
-    <div id="app"></div>
-
-    <div id="container"></div>
-
-    <div id="searchHolder">
-        <div id="search">SEARCH&nbsp;LAST&nbsp;NAMES</div>
-    </div>
-
-    <div id="legendHolder">
-        <div id="legendLabel">LEGEND:</div>
-        <div id="legendFirstName">FIRST NAME</div>
-        <div id="legendLastName">LAST NAME</div>
-        <div id="legendRegion">PROVINCE</div>
-    </div>
-
-    <div id="btnResetHolder"><button id="btnReset">RANDOM REGION</button></div>
-
-    <div id="layoutIndicator">LAYOUT ANIMATION:</div>
-    <div id="simulationToggleHolder"><button id="simulationToggle">STOP Force Atlas 2</button></div>
-    <div id="noverlapToggleHolder"><button id="noverlapToggle">START No Overlap</button></div>
-
-    <div id="dropdownRegionHolder">
-        <label id="labelRegionSelect" for="dropdownRegion">SELECT REGION:</label><br />
-        <select id="dropdownRegion" name="dropdownRegion">
-            <option value="NATIONAL CAPITAL REGION">NATIONAL CAPITAL REGION (NCR)</option>
-            <option value="CORDILLERA ADMINISTRATIVE REGION">CORDILLERA ADMINISTRATIVE REGION (CAR)</option>
-            <option value="REGION I">REGION I (Ilocos Region)</option>
-            <option value="REGION II">REGION II (Cagayan Valley)</option>
-            <option value="REGION III">REGION III (Central Luzon)</option>
-            <option value="REGION IV-A">REGION IV-A (CALABARZON)</option>
-            <option value="REGION IV-B">REGION IV-B (MIMAROPA)</option>
-            <option value="REGION V">REGION V (Bicol Region)</option>
-            <option value="REGION VI">REGION VI (Western Visayas)</option>
-            <option value="REGION VII">REGION VII (Central Visayas)</option>
-            <option value="REGION VIII">REGION VIII (Eastern Visayas)</option>
-            <option value="REGION IX">REGION IX (Zamboanga Peninsula)</option>
-            <option value="REGION X">REGION X (Northern Mindanao)</option>
-            <option value="REGION XI">REGION XI (Davao Region)</option>
-            <option value="REGION XII">REGION XII (SOCCSKSARGEN)</option>
-            <option value="REGION XIII">REGION XIII (Caraga)</option>
-            <option value="Autonomous Region in Muslim Mindanao">Autonomous Region in Muslim Mindanao (ARMM)</option>
-            <option value="BARMM">Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)</option>
-        </select>
-    </div>
-
-    <div id="btnInfo">
-        <div id="txtInfo">INFO</div>
-        <div id="questionMark">?</div>
-    </div>
-
-    <div id="clickShield"></div>
-
-    <div id="infoPopup">
-        <div id="infoPopupBG"></div>
-        <div id="infoPopupContent">
-            <p>Loading data, please wait...</p><br />
-            <p><span class="headerData">About this project:</span> (scroll down)</p><br />
-            <p>This project is a network graph visualization of Philippine elected officials from 2004-2025. It aims to
-                illustrate the prevalence of potential political dynasties in the country by mapping relationships
-                between politicians sharing the same last name.</p><br />
-            <p>Red nodes (circles) represent surnames, blue nodes represent individual politicians, and green nodes
-                represent provinces. At a glance, potential political dynasties may be identified by the size of surname
-                nodes, which corresponds to the number of politicians sharing that surname within the selected region.
-            </p><br />
-            <p>Edges (lines) connect surnames to their respective politicians and provinces to the politicians operating
-                within them.</p><br />
-            <p>Nodes and edges start out randomized, and coalesce into position using the Force Atlas 2 layout by
-                default. Start or Stop Layout animations by pressing the "START/STOP" layout buttons.</p><br />
-            <p>Data is sourced from the the Ateneo Policy Center and the Inclusive Democracy Participate project, the
-                Open Halalan Philippine National and Local Election Dataset, as well as the Philippine Statistics
-                Authority.</p><br />
-            <p>Limitations:</p>
-            <p><span class="headerData">Limitations:</span></p>
-            <ul>
-                <li>Data may not capture all political relationships or nuances.</li>
-                <li>Consanguinity is not tracked beyond family name, especially in cases where political families
-                    intermarry.
-                </li>
-                <li>Individuals in the same region may share the same family name, but may not be related.</li>
-                <li>Data only tracks positions in local elections, and does not include national offices, party-list
-                    representatives, and Barangay officials.</li>
-            </ul>
-        </div>
-    </div>
-
-    <div id="spinnerHolder">
-        <div class="spinnerMain">
-            <div class="spinnerArc">
-                <div></div>
+<body data-dir="atlas">
+    <div id="app">
+        <header>
+            <div class="brand">
+                <h1>Dynasties</h1><span>Philippine local election winners</span>
             </div>
-        </div>
-    </div>
+            <nav id="review" aria-label="Views">
+                <button data-dir="atlas">Atlas</button>
+                <button data-dir="network">Network</button>
+                <button data-dir="ledger">Ledger</button>
+            </nav>
+            <div class="ctl"><label for="yearseg">Year</label>
+                <div class="seg" id="yearseg"></div>
+            </div>
+            <div class="ctl"><label for="region">Scope</label>
+                <select id="region">
+                    <option value="">Whole country</option>
+                </select>
+                <span id="provpill" class="pill" hidden></span>
+            </div>
+            <div class="ctl"><label for="minseg">Rule</label>
+                <div class="seg" id="minseg">
+                    <button data-min="2" aria-pressed="true">≥2 seats</button>
+                    <button data-min="3">≥3</button>
+                    <button data-min="5">≥5</button>
+                </div>
+            </div>
+            <input id="q" type="search" placeholder="Search surname…" autocomplete="off" aria-label="Search surname">
+        </header>
 
-    <div id="lastNameSearchHolder">
-        <div id="lastNameSearchBG"></div>
-        <div id="lastNameSearchLabel">SEARCH LAST NAMES</div>
-        <div id="searchBoxHolder">
-            <input type="text" id="searchBox" placeholder="Type last name..." />
-        </div>
-        <div id="lastNameHolder"></div>
-    </div>
+        <main>
+            <section class="panel" id="map">
+                <div class="ph">
+                    <h2>Where dynasties hold seats</h2><small>bubble = dynasty seats · color = share of province</small>
+                </div>
+                <div class="body" style="padding:0"></div>
+                <div class="legend" id="maplegend"></div>
+                <div class="hint">click a province to focus</div>
+            </section>
 
-    <div id="dataSourceLink">
-        Data Sources<br />
-        2004-2016: <a href="https://www.inclusivedemocracy.ph/data-and-infographics" target="_blank"
-            rel="noopener noreferrer">Ateneo Policy Center</a><br />
-        2019-2025: <a href="https://robertrleung.github.io/OpenHalalan" target="_blank" rel="noopener noreferrer">Open
-            Halalan</a><br />
-        Poverty: <a href="https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true" target="_blank"
-            rel="noopener noreferrer">Philippine Statistics Authority</a><br />
-        Source Code: <a href="https://github.com/bettergovph/officials-network-graph" target="_blank"
-            rel="noopener noreferrer">BetterGovPH Github</a>
-    </div>
+            <section class="panel" id="graph">
+                <div class="body" style="padding:0"></div>
+                <div class="legend">
+                    <div><i style="background:var(--sur)"></i>surname (size = seats)</div>
+                    <div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div>
+                    <div><i style="background:var(--ppl)"></i>official (surname)</div>
+                    <div><i style="background:var(--amber)"></i>official (via middle name)</div>
+                    <div><i style="background:var(--prov)"></i>province</div>
+                    <div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div>
+                </div>
+                <div class="hint">drag · scroll to zoom · click surname</div>
+            </section>
 
-    <script src="jquery-3.7.1.min.js"></script>
-    <!-- Vite dev: load the source module directly -->
+            <section class="panel" id="rank">
+                <div class="ph">
+                    <h2>Largest surname blocs</h2><small class="sp" id="rankmeta"></small>
+                </div>
+                <div class="stats" id="stats"></div>
+                <div class="body" id="rankbody"></div>
+            </section>
+
+            <section class="panel" id="table">
+                <div class="ph">
+                    <h2>All blocs</h2><small class="sp" id="tablemeta"></small>
+                </div>
+                <div class="body" id="tablebody"></div>
+            </section>
+
+            <section class="panel" id="detail">
+                <div id="detailbody" style="display:flex;flex-direction:column;min-height:0;height:100%"></div>
+            </section>
+        </main>
+
+        <footer>
+            <span>A bloc = officials in one province who carry the surname as last name <em>or</em> middle name.
+                Local posts only (national offices excluded). Shared names may not mean kinship.</span>
+            <span>Data: <a href="https://robertrleung.github.io/OpenHalalan/" target="_blank" rel="noopener noreferrer">Open Halalan</a>
+                · Poverty: <a href="https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1E__FY/?tablelist=true" target="_blank" rel="noopener noreferrer">PSA</a>
+                · Code: <a href="https://github.com/bettergovph/officials-network-graph" target="_blank" rel="noopener noreferrer">BetterGovPH</a></span>
+        </footer>
+    </div>
+    <div class="spin" id="spin">loading winners…</div>
+
     <script type="module" src="/src/index.ts"></script>
 </body>
 
