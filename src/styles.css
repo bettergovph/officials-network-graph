@@ -124,8 +124,8 @@ body[data-dir="ledger"] #map, body[data-dir="ledger"] #graph { display: none }
 .rk:hover { background: var(--panel2) }
 .rk[aria-current="true"] { background: var(--panel2); border-color: var(--line) }
 .rk i { font: 500 11px var(--mono); color: var(--faint); font-style: normal }
-.rk .nm { font-weight: 600; display: flex; gap: 8px; align-items: baseline; min-width: 0 }
-.rk .nm small { font: 400 11px var(--mono); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.rk .nm { font-weight: 600; display: flex; gap: 2px 8px; align-items: baseline; min-width: 0; flex-wrap: wrap; white-space: nowrap }
+.rk .nm small { font: 400 11px var(--mono); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }
 .rk .bar { grid-column: 2; height: 4px; background: var(--panel2); border-radius: 2px; margin-top: 5px; overflow: hidden }
 .rk .bar i { display: block; height: 100%; background: var(--sur) }
 .rk .n { font: 600 13px var(--mono) }
