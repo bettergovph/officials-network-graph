@@ -268,12 +268,16 @@ async function renderMap() {
     const provs = Object.values(PROV);
     const maxShare = d3.max(provs, p => p.share) || .5;
     const inReg = (p: Province) => !S.region || p.region === S.region;
+    // With a surname selected and no province focused, light up the provinces where that surname holds seats.
+    const selCluster = S.sel ? CLBY[S.sel] : undefined;
+    const selProvs = new Set(selCluster && !S.province ? [selCluster.prov, ...selCluster.elsewhere.map(o => o.prov)] : []);
     const provStyle = (f: Feature<Geometry, GeoProps> | undefined): L.PathOptions => {
         const p = f ? PROV[f.properties.name] : undefined;
         const sel = !!p && p.name === S.province;
         if (!p) return { color: 'rgba(128,128,128,.35)', weight: .5, fillColor: '#888', fillOpacity: .05 };
-        const dim = !inReg(p) || (!!S.province && !sel);
-        return { color: sel ? ink : 'rgba(0,0,0,.55)', weight: sel ? 2.5 : .8, fillColor: fill(p.dyn, p.share / maxShare), fillOpacity: dim ? .12 : .7, opacity: dim ? .35 : 1 };
+        const holds = selProvs.has(p.name);
+        const dim = !inReg(p) || (!!S.province && !sel) || (selProvs.size > 0 && !holds && inReg(p));
+        return { color: sel || holds ? ink : 'rgba(0,0,0,.55)', weight: sel ? 2.5 : holds ? 2 : .8, fillColor: fill(p.dyn, p.share / maxShare), fillOpacity: dim ? .14 : .72, opacity: dim ? .35 : 1 };
     };
     if (!regionLayer) regionLayer = L.geoJSON(regions, { style: { color: ink, weight: 1.2, fill: false, dashArray: '4 4', opacity: .45 }, interactive: false }).addTo(map);
     if (provLayer) provLayer.setStyle(provStyle);
@@ -306,7 +310,8 @@ async function renderMap() {
             const st = f?.properties.slug ? [...stats.values()].find(v => v.slug === f.properties.slug) : undefined;
             const hl = !!f?.properties.slug && selTowns.has(f.properties.slug);
             const isTown = !!townSlug && f?.properties.slug === townSlug;
-            return { color: isTown ? ink : hl ? ink : bg, weight: isTown ? 3.5 : hl ? 2.5 : .8, opacity: .95, fillColor: st ? fill(st.dyn, (st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: st ? .75 : .15 };
+            const faded = selTowns.size > 0 && !hl && !isTown; // a surname is selected: towns it does not hold step back
+            return { color: isTown ? ink : hl ? ink : bg, weight: isTown ? 3.5 : hl ? 2.5 : .8, opacity: faded ? .5 : .95, fillColor: st ? fill(st.dyn, (st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: !st ? .15 : faded ? .18 : .78 };
         };
         if (cityLayerFor !== S.province) {
             cityLayer?.remove(); cityLayer = null; cityLayerFor = S.province;
@@ -441,7 +446,7 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; S.tab = 'blocs'; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function select(id: string) { S.sel = id; S.tab = 'blocs'; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas') void renderMap(); }
 function setRegion(r: string) {
     if (r === '' && heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return;
     S.region = r; S.province = ''; S.town = ''; S.sel = null;
