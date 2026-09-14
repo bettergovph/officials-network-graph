@@ -29,9 +29,10 @@ const stored = (k: string) => { try { return localStorage.getItem(k); } catch { 
 const store = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
 const DIRS: Dir[] = ['atlas', 'network', 'ledger'];
 
-const DEFAULT_REGION = 'NATIONAL CAPITAL REGION';
-// Atlas is always the starting view; year and region are remembered, but never the whole country.
-const S = { dir: 'atlas' as Dir, year: stored('dyn.year') ?? '', region: stored('dyn.region') || DEFAULT_REGION, province: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
+// Atlas is always the starting view; year and region are remembered.
+const S = { dir: 'atlas' as Dir, year: stored('dyn.year') ?? '', region: stored('dyn.region') ?? '', province: '', town: '', min: 2, q: '', sel: null as string | null, sort: { k: 'n' as SortKey, asc: false }, limit: 150 };
+/** Whole-country scope is fine on the atlas for one election; the graph and ledger build every bloc at once. */
+const heavy = (dir = S.dir, region = S.region, year = S.year) => region === '' && (dir !== 'atlas' || year === 'all');
 let INDEX: IndexData | null = null;
 let YEARS: number[] = [];
 let ALL: Row[] = [], ROWS: Row[] = [];
@@ -148,9 +149,24 @@ function renderTable() {
         + `</tbody></table>` + (list.length > S.limit ? `<button class="more" id="more">Show ${Math.min(150, list.length - S.limit)} more of ${fmt(list.length)}</button>` : '');
 }
 
+function renderTown(host: HTMLElement) {
+    const p = PROV[S.province]; if (!p) return;
+    const town = S.town;
+    const people = Object.values(p.people).filter(q => latest(q).city === town).sort((a, b) => rank(a) - rank(b) || a.last_name.localeCompare(b.last_name));
+    const inBloc = people.filter(q => p.covered.has(q.key));
+    const blocs = p.clusters.map(c => ({ c, here: c.members.filter(m => latest(m).city === town) })).filter(x => x.here.length).sort((a, b) => b.here.length - a.here.length || b.c.n - a.c.n);
+    const label = (r: Person) => { const href = personHref(latest(r)); const t = `${title(r.first_name)} ${title(r.last_name)}`; return href ? `<a href="${href}">${t}</a>` : t; };
+    host.innerHTML = `<div class="dhead"><div class="kicker"><span>${title(p.name)} · ${regionLabel(p.region)} · ${yearLabel()}</span><button class="linkbtn" id="towncl" title="back to province">× province</button></div><h3>${title(town)}<em>${people.length} ${unit()}</em></h3>
+  <div class="facts"><div><b>${blocs.length}</b><span>surname bloc${blocs.length === 1 ? '' : 's'} (${S.min}+ seats in province)</span></div><div><b style="color:${inBloc.length ? 'var(--sur)' : 'inherit'}">${people.length ? pct(inBloc.length / people.length) : '–'}</b><span>of ${unit()} here in a bloc</span></div></div></div>
+  <div class="body tree" style="padding-top:0">
+  ${blocs.length ? `<h4>Surnames with seats here</h4><div class="chips">${blocs.map(({ c, here }) => `<button class="chip" data-id="${c.id}">${title(c.sur)}<small>${here.length} here · ${c.n} in province</small></button>`).join('')}</div>` : `<div class="empty" style="padding:12px 0"><b>No surname bloc</b>No family name holds ${S.min}+ seats in ${title(p.name)} through officials of ${title(town)}.</div>`}
+  <h4>Officials</h4>${people.map(q => `<div class="person" data-via="${p.covered.has(q.key) ? 'surname' : 'none'}"><div class="who">${label(q)}</div><div class="v">${latest(q).votes ? fmt(+latest(q).votes) : '–'}<small>${latest(q).party || '—'}</small></div><div class="what"><b>${title(latest(q).position)}</b>${latest(q).district ? ' · ' + title(latest(q).district) + ' dist.' : ''}</div></div>`).join('') || '<div class="empty">No local officials recorded here for this selection.</div>'}</div>`;
+    host.querySelector('#towncl')?.addEventListener('click', () => setTown(''));
+}
 function renderDetail() {
     const host = el('detailbody');
     const c = S.sel ? CLBY[S.sel] : undefined;
+    if (!c && S.town && PROV[S.province]) { renderTown(host); return; }
     if (!c) { host.innerHTML = `<div class="empty"><b>Pick a surname</b>Click a bloc in the list, table, map or graph to see every elected official who carries it, the posts they hold, and related surnames.</div>`; return; }
     const p = PROV[c.prov]!;
     const all = S.year === 'all';
@@ -194,15 +210,17 @@ async function renderMap() {
         LM.attributionControl.setPrefix(false);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · boundaries <a href="https://github.com/faeldon/philippines-json-maps">PSGC 2023</a>', subdomains: 'abc' }).addTo(LM);
         labelLayer = L.layerGroup().addTo(LM);
-        LM.on('click', () => { if (S.province) setProvince(''); });
+        LM.on('click', () => { if (S.town) setTown(''); else if (S.province) setProvince(''); });
     }
     const map = LM;
     map.invalidateSize();
     const token = ++mapToken;
     const [provinces, regions] = await Promise.all([loadGeo('/data/geo/provinces.json.gz'), loadGeo('/data/geo/regions.json.gz')]);
     if (token !== mapToken || LM !== map) return;
-    const ink = cssVar('--ink'), bg = cssVar('--bg');
-    const col = (t: number) => d3.interpolateRgb(cssVar('--sur2'), cssVar('--sur'))(t);
+    const ink = cssVar('--ink'), bg = cssVar('--bg'), none = cssVar('--none');
+    const ramp = d3.interpolateRgb(cssVar('--sur2'), cssVar('--sur'));
+    const col = (t: number) => ramp(t);
+    const fill = (dyn: number, t: number) => dyn > 0 ? ramp(t) : none;
     const provs = Object.values(PROV);
     const maxShare = d3.max(provs, p => p.share) || .5;
     const inReg = (p: Province) => !S.region || p.region === S.region;
@@ -211,7 +229,7 @@ async function renderMap() {
         const sel = !!p && p.name === S.province;
         if (!p) return { color: 'rgba(128,128,128,.35)', weight: .5, fillColor: '#888', fillOpacity: .05 };
         const dim = !inReg(p) || (!!S.province && !sel);
-        return { color: sel ? ink : 'rgba(0,0,0,.55)', weight: sel ? 2.5 : .8, fillColor: col(p.share / maxShare), fillOpacity: dim ? .12 : .7, opacity: dim ? .35 : 1 };
+        return { color: sel ? ink : 'rgba(0,0,0,.55)', weight: sel ? 2.5 : .8, fillColor: fill(p.dyn, p.share / maxShare), fillOpacity: dim ? .12 : .7, opacity: dim ? .35 : 1 };
     };
     if (!regionLayer) regionLayer = L.geoJSON(regions, { style: { color: ink, weight: 1.2, fill: false, dashArray: '4 4', opacity: .45 }, interactive: false }).addTo(map);
     if (provLayer) provLayer.setStyle(provStyle);
@@ -239,10 +257,12 @@ async function renderMap() {
         const sel = S.sel ? CLBY[S.sel] : undefined;
         const selTowns = new Set(sel && sel.prov === p.name ? sel.members.map(m => slug(latest(m).city)) : []);
         const cityMax = d3.max([...stats.values()], v => v.total ? v.dyn / v.total : 0) || 1;
+        const townSlug = S.town ? slug(S.town) : '';
         const cityStyle = (f: Feature<Geometry, GeoProps> | undefined): L.PathOptions => {
             const st = f?.properties.slug ? [...stats.values()].find(v => v.slug === f.properties.slug) : undefined;
             const hl = !!f?.properties.slug && selTowns.has(f.properties.slug);
-            return { color: hl ? ink : bg, weight: hl ? 2.5 : .8, opacity: .9, fillColor: st ? col((st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: st ? .75 : .15 };
+            const isTown = !!townSlug && f?.properties.slug === townSlug;
+            return { color: isTown ? ink : hl ? ink : bg, weight: isTown ? 3.5 : hl ? 2.5 : .8, opacity: .95, fillColor: st ? fill(st.dyn, (st.total ? st.dyn / st.total : 0) / cityMax) : '#888', fillOpacity: st ? .75 : .15 };
         };
         if (cityLayerFor !== S.province) {
             cityLayer?.remove(); cityLayer = null; cityLayerFor = S.province;
@@ -252,11 +272,13 @@ async function renderMap() {
                 style: cityStyle,
                 onEachFeature: (f, layer) => {
                     layer.on('mouseover', () => { const st = f.properties.slug ? [...stats.values()].find(v => v.slug === f.properties.slug) : undefined; layer.bindTooltip(`<b>${title(f.properties.name)}</b><br>${st ? `${st.dyn} of ${st.total} ${unit()} (${pct(st.total ? st.dyn / st.total : 0)}) in surname blocs` : 'no local seats in this selection'}`, { direction: 'top', sticky: true }).openTooltip(); });
-                    layer.on('click', e => { L.DomEvent.stop(e); });
+                    layer.on('click', e => { L.DomEvent.stop(e); const name = f.properties.name; if (name) setTown(S.town === name ? '' : name); });
                 },
             }).addTo(map);
         } else cityLayer?.setStyle(cityStyle);
         cityLayer?.bringToFront();
+        const noBloc = [...stats.values()].filter(v => v.dyn === 0).length;
+        el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(0)}"></i>low share</div><div><i style="background:${none}"></i>no surname bloc · ${noBloc} of ${stats.size} towns</div><div><i style="background:transparent;border:2px solid ${ink}"></i>towns where the selected surname holds seats · click a town for details</div>`;
     } else { cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; }
     // camera
     const key = S.province || S.region;
@@ -267,12 +289,32 @@ async function renderMap() {
         else if (S.region) { const b = L.latLngBounds([]); provLayer.eachLayer(l => { const f = (l as L.Polygon).feature as Feature<Geometry, GeoProps> | undefined; if (f && PROV[f.properties.name]?.region === S.region) b.extend((l as L.Polygon).getBounds()); }); if (b.isValid()) bounds = b; }
         map.flyToBounds(bounds ?? COUNTRY_BOUNDS, { duration: .6, padding: [16, 16], maxZoom: S.province ? 10 : 8 });
     }
-    el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(0)}"></i>low share</div>${S.province ? `<div><i style="background:transparent;border:2px solid ${ink}"></i>towns where the selected surname holds seats</div>` : `<div><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>region boundary</div>`}`;
+    if (!S.province) el('maplegend').innerHTML = `<div><i style="background:${col(1)}"></i>high share of ${unit()} in surname blocs</div><div><i style="background:${col(0)}"></i>low share</div><div><i style="background:${none}"></i>no surname bloc</div><div><i style="background:transparent;border:1px dashed ${ink};opacity:.6"></i>region boundary · click a province for its towns</div>`;
 }
 
 // ----- network -----
 let sim: d3.Simulation<GNode, GLink> | null = null, gCanvas: HTMLCanvasElement | null = null, gCtx: CanvasRenderingContext2D | null = null;
 let gT: d3.ZoomTransform = d3.zoomIdentity, gNodes: GNode[] = [], gLinks: GLink[] = [], gHover: GNode | null = null;
+let gZoom: d3.ZoomBehavior<HTMLCanvasElement, unknown> | null = null, autoFit = true;
+/** Keep the whole graph in view until the user pans or zooms. */
+function fitGraph() {
+    if (!gCanvas || !gNodes.length) return;
+    const host = gCanvas.parentElement!; const W = host.clientWidth, H = host.clientHeight; if (!W || !H) return;
+    // Large graphs fling a few province nodes far out; fit the central 94% so they don't dictate the zoom.
+    const q = gNodes.length > 200 ? .03 : 0;
+    const xs = gNodes.map(n => n.x).sort((a, b) => a - b), ys = gNodes.map(n => n.y).sort((a, b) => a - b);
+    const at = (arr: number[], f: number) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))]!;
+    const x0 = at(xs, q) - 6, x1 = at(xs, 1 - q) + 6, y0 = at(ys, q) - 6, y1 = at(ys, 1 - q) + 6;
+    // The rank and detail panels float over the canvas on wide screens; fit into the gap between them.
+    const cb = gCanvas.getBoundingClientRect();
+    const rank = document.getElementById('rank')?.getBoundingClientRect(), det = document.getElementById('detail')?.getBoundingClientRect();
+    const insetL = rank && rank.left < cb.left + 40 && rank.right > cb.left ? Math.min(W / 2, rank.right - cb.left + 16) : 0;
+    const insetR = det && det.right > cb.right - 40 && det.left < cb.right ? Math.min(W / 2, cb.right - det.left + 16) : 0;
+    const availW = Math.max(100, W - insetL - insetR);
+    const k = Math.max(.02, Math.min(8, .88 * Math.min(availW / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0))));
+    const t = d3.zoomIdentity.translate(-k * (x0 + x1) / 2 + (insetL - insetR) / 2, -k * (y0 + y1) / 2).scale(k);
+    if (gZoom) d3.select(gCanvas).call(gZoom.transform, t); else { gT = t; drawGraph(); }
+}
 function buildGraph() {
     const list = scoped(); const wide = !S.region && !S.province;
     const clusters = wide ? list.filter(c => c.n >= Math.max(S.min, 4)) : list;
@@ -296,13 +338,15 @@ function buildGraph() {
     const dist: Record<LinkType, number> = { ps: wide ? 30 : 60, sf: 10, fc: 22, pc: wide ? 0 : 90, ss: wide ? 60 : 120 };
     const str: Record<LinkType, number> = { ps: .4, sf: .9, fc: .35, pc: .15, ss: .12 };
     const charge: Record<NodeType, number> = { p: -260, s: -40, c: -50, f: -6 };
-    sim = d3.forceSimulation<GNode>(nodes).force('link', d3.forceLink<GNode, GLink>(links).id(d => d.id).distance(l => dist[l.t]).strength(l => str[l.t])).force('charge', d3.forceManyBody<GNode>().strength(d => charge[d.t])).force('collide', d3.forceCollide<GNode>(d => d.r + 2)).force('center', d3.forceCenter(0, 0)).force('x', d3.forceX<GNode>().strength(.03)).force('y', d3.forceY<GNode>().strength(.03)).alphaDecay(.03).on('tick', drawGraph);
+    sim = d3.forceSimulation<GNode>(nodes).force('link', d3.forceLink<GNode, GLink>(links).id(d => d.id).distance(l => dist[l.t]).strength(l => str[l.t])).force('charge', d3.forceManyBody<GNode>().strength(d => charge[d.t])).force('collide', d3.forceCollide<GNode>(d => d.r + 2)).force('center', d3.forceCenter(0, 0)).force('x', d3.forceX<GNode>().strength(.03)).force('y', d3.forceY<GNode>().strength(.03)).alphaDecay(.03).on('tick', () => { if (autoFit) fitGraph(); else drawGraph(); }).on('end', () => { if (autoFit) fitGraph(); });
+    autoFit = true;
 }
 function ensureCanvas() {
     if (gCanvas) return;
     const host = document.querySelector<HTMLElement>('#graph .body'); if (!host) return;
     const canvas = document.createElement('canvas'); host.appendChild(canvas); gCanvas = canvas; gCtx = canvas.getContext('2d');
-    d3.select(canvas).call(d3.zoom<HTMLCanvasElement, unknown>().scaleExtent([.15, 8]).on('zoom', e => { gT = e.transform; drawGraph(); })).on('dblclick.zoom', null);
+    gZoom = d3.zoom<HTMLCanvasElement, unknown>().scaleExtent([.02, 8]).on('zoom', e => { gT = e.transform; if (e.sourceEvent) autoFit = false; drawGraph(); });
+    d3.select(canvas).call(gZoom).on('dblclick.zoom', () => { autoFit = true; fitGraph(); });
     canvas.addEventListener('mousemove', e => { const n = pick(e); if (n !== gHover) { gHover = n; canvas.style.cursor = n && n.t !== 'f' && n.t !== 'c' ? 'pointer' : 'default'; drawGraph(); } });
     canvas.addEventListener('click', e => { const n = pick(e); if (!n) return; if (n.t === 's' && n.c) select(n.c.id); else if (n.t === 'p' && n.prov !== undefined) setProvince(n.prov === S.province ? '' : n.prov); });
 }
@@ -346,9 +390,10 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; renderDetail(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function select(id: string) { S.sel = id; S.town = ''; renderDetail(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas' && S.province) void renderMap(); }
+function setTown(t: string) { S.town = t; if (t) S.sel = null; renderDetail(); if (S.dir === 'atlas') void renderMap(); document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === S.sel))); }
 function setProvince(p: string) {
-    S.province = p;
+    S.province = p; S.town = '';
     if (p) { const prov = PROV[p]; if (prov) { S.region = prov.region; el<HTMLSelectElement>('region').value = S.region; } }
     const pill = el('provpill'); pill.hidden = !p; pill.innerHTML = p ? `${title(p)} <button title="clear">×</button>` : '';
     pill.querySelector('button')?.addEventListener('click', () => setProvince(''));
@@ -362,7 +407,7 @@ function refresh(regraph: boolean) {
     renderDetail();
 }
 function setDir(d: Dir) { S.dir = d; document.body.dataset['dir'] = d; document.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === d))); requestAnimationFrame(() => refresh(true)); }
-function clearScope() { S.province = ''; S.region = ''; el<HTMLSelectElement>('region').value = ''; el('provpill').hidden = true; }
+function clearScope() { S.province = ''; S.town = ''; S.region = ''; el<HTMLSelectElement>('region').value = ''; el('provpill').hidden = true; }
 const closestButton = (e: Event) => (e.target as HTMLElement).closest('button');
 const onResize = () => { if (S.dir === 'atlas' && LM) LM.invalidateSize(); if (S.dir === 'network') drawGraph(); };
 
@@ -376,7 +421,7 @@ const MARKUP = `<div class="dyn">
 </div>
 <div class="dyn-main">
   <section class="panel" id="map"><div class="ph"><h2>Where dynasties hold seats</h2><small>color = share of seats in surname blocs · click a province for its towns</small></div><div class="body" style="padding:0"></div><div class="legend" id="maplegend"></div><div class="hint">click a province to focus</div></section>
-  <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · click surname</div></section>
+  <section class="panel" id="graph"><div class="body" style="padding:0"></div><div class="legend"><div><i style="background:var(--sur)"></i>surname (size = seats)</div><div><i style="background:var(--sur);width:14px;height:0;border-top:1px dashed var(--sur);border-radius:0"></i>same surname, other province</div><div><i style="background:var(--ppl)"></i>official (surname)</div><div><i style="background:var(--amber)"></i>official (via middle name)</div><div><i style="background:var(--prov)"></i>province</div><div><i style="background:var(--prov);border-radius:0;opacity:.7"></i>city / municipality</div></div><div class="hint">drag · scroll to zoom · double-click to fit · click surname</div></section>
   <section class="panel" id="rank"><div class="ph"><h2>Largest surname blocs</h2><small class="sp" id="rankmeta"></small></div><div class="stats" id="stats"></div><div class="body" id="rankbody"></div></section>
   <section class="panel" id="table"><div class="ph"><h2>All blocs</h2><small class="sp" id="tablemeta"></small></div><div class="body" id="tablebody"></div></section>
   <section class="panel" id="detail"><div id="detailbody" style="display:flex;flex-direction:column;min-height:0;height:100%"></div></section>
@@ -385,7 +430,7 @@ const MARKUP = `<div class="dyn">
 <div class="spin" id="spin" hidden>loading winners…</div>
 </div>`;
 
-const WHOLE_COUNTRY_WARNING = 'The whole country builds thousands of surname blocs at once. The atlas copes, but the network graph and ledger can freeze the tab on slower devices.\n\nLoad the whole country?';
+const HEAVY_WARNING = 'This builds every surname bloc in the country at once. The atlas copes with one election, but the network graph, the ledger, and all nine elections together can freeze the tab on slower devices.\n\nContinue?';
 
 export function mountDynasties(root: HTMLElement): () => void {
     root.innerHTML = MARKUP;
@@ -399,17 +444,17 @@ export function mountDynasties(root: HTMLElement): () => void {
         if (!alive) return;
         busy(null); build(); S.limit = 150; refresh(true);
     };
-    dyn.querySelector('#review')!.addEventListener('click', e => { const b = closestButton(e); const d = b?.dataset['dir']; if (d && DIRS.some(x => x === d)) setDir(d as Dir); });
+    dyn.querySelector('#review')!.addEventListener('click', e => { const b = closestButton(e); const d = b?.dataset['dir']; if (!d || !DIRS.some(x => x === d)) return; if (heavy(d as Dir) && !heavy() && !confirm(HEAVY_WARNING)) return; setDir(d as Dir); });
     dyn.querySelector('#yearseg')!.addEventListener('click', e => {
         const b = closestButton(e); if (!b || !b.dataset['y']) return;
-        if (b.dataset['y'] === 'all' && !S.region && !confirm(WHOLE_COUNTRY_WARNING)) return;
+        if (heavy(S.dir, S.region, b.dataset['y']) && !heavy() && !confirm(HEAVY_WARNING)) return;
         S.year = b.dataset['y']; store('dyn.year', S.year);
         dyn.querySelectorAll<HTMLButtonElement>('#yearseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         void rebuild();
     });
     dyn.querySelector<HTMLSelectElement>('#region')!.addEventListener('change', e => {
         const sel = e.target as HTMLSelectElement;
-        if (sel.value === '' && !confirm(WHOLE_COUNTRY_WARNING)) { sel.value = S.region; return; }
+        if (heavy(S.dir, sel.value) && !heavy() && !confirm(HEAVY_WARNING)) { sel.value = S.region; return; }
         S.region = sel.value; S.province = ''; el('provpill').hidden = true; store('dyn.region', S.region); refresh(true);
     });
     dyn.querySelector('#minseg')!.addEventListener('click', e => { const b = closestButton(e); if (!b || !b.dataset['min']) return; S.min = +b.dataset['min']; dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); build(); S.limit = 150; refresh(true); });
@@ -440,7 +485,7 @@ export function mountDynasties(root: HTMLElement): () => void {
             const sel = el<HTMLSelectElement>('region');
             const regions = INDEX!.regions.map(r => r.name).sort();
             regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = regionLabel(r); sel.appendChild(o); });
-            if (S.region && !regions.includes(S.region)) S.region = DEFAULT_REGION;
+            if (S.region && !regions.includes(S.region)) S.region = '';
             sel.value = S.region;
             dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset['min']! === S.min)));
             dyn.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === S.dir)));
