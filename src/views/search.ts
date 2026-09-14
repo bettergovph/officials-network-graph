@@ -1,6 +1,6 @@
 import { api, loadIndex, loadPeople, type PeopleRow } from '../data';
 import { esc, key, title, personName, hrefPerson, hrefProvince, hrefTown, posLabel } from '../util';
-import { loading, failed } from './shared';
+import { loading, failed, crumbs } from './shared';
 
 interface ApiPerson { id: string; display_name: string; last_name: string; first_name: string; middle_name: string; suffix: string; sex: string; runs: number; wins: number; first_year: number; last_year: number; top_position: string; province: string; province_slug: string }
 interface ApiPlace { type: 'province' | 'city'; name: string; slug: string; province_slug: string | null }
@@ -24,7 +24,8 @@ async function searchPeople(q: string, provinceName: (slug: string) => string): 
 
 export async function search(root: HTMLElement, q: URLSearchParams) {
     const query = (q.get('q') ?? '').trim();
-    root.innerHTML = `<div class="page"><h1>Search</h1><form class="searchform" id="searchform"><input type="search" name="q" value="${esc(query)}" placeholder="Surname, or “Surname, First name”" autocomplete="off" autofocus><button class="btn" type="submit">Search</button></form><div id="results"></div></div>`;
+    const crumbsHtml = crumbs([{ label: 'Officials directory', href: '/officials' }, { label: 'Search' }]);
+    root.innerHTML = `<div class="page">${crumbsHtml}<h1>Search</h1><form class="searchform" id="searchform"><input type="search" name="q" value="${esc(query)}" placeholder="Surname, or “Surname, First name”" autocomplete="off" autofocus><button class="btn" type="submit">Search</button></form><div id="results"></div></div>`;
     const results = root.querySelector<HTMLElement>('#results')!;
     if (query.length < 2) { results.innerHTML = '<p class="mute">Type at least two letters of a surname. Examples: <a href="/search?q=marcos">Marcos</a>, <a href="/search?q=duterte,%20sara">Duterte, Sara</a>, <a href="/search?q=cebu">Cebu</a>.</p>'; return; }
     loading(results, 'searching…');

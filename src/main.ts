@@ -3,7 +3,7 @@ import { region, province, town } from './views/places';
 import { person } from './views/person';
 import { search } from './views/search';
 import { national } from './views/national';
-import { people } from './views/people';
+import { officials } from './views/officials';
 import { regional } from './views/regional';
 import { mountDynasties } from './views/dynasties';
 
@@ -15,9 +15,9 @@ const routes: { pattern: RegExp; view: View; nav?: string }[] = [
     { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => region(root, s!), nav: 'regional' },
     { pattern: /^\/province\/([^/]+)\/?$/, view: (root, [s], q) => province(root, s!, q), nav: 'regional' },
     { pattern: /^\/province\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, c], q) => town(root, s!, c!, q), nav: 'regional' },
-    { pattern: /^\/person\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, id]) => person(root, s!, id!), nav: 'people' },
-    { pattern: /^\/people\/?$/, view: (root, _p, q) => people(root, q), nav: 'people' },
-    { pattern: /^\/search\/?$/, view: (root, _p, q) => search(root, q), nav: 'search' },
+    { pattern: /^\/person\/([^/]+)\/([^/]+)\/?$/, view: (root, [s, id]) => person(root, s!, id!), nav: 'officials' },
+    { pattern: /^\/(?:officials|people)\/?$/, view: (root, _p, q) => officials(root, q), nav: 'officials' },
+    { pattern: /^\/search\/?$/, view: (root, _p, q) => search(root, q), nav: 'officials' },
     { pattern: /^\/dynasties\/?$/, view: root => mountDynasties(root), nav: 'dynasties' },
 ];
 

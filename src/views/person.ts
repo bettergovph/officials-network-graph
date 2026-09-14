@@ -17,7 +17,7 @@ export async function person(root: HTMLElement, provSlug: string, pid: string) {
         const sameSurname = Object.entries(shard.persons).filter(([id, q]) => id !== pid && q[0] === p[0] && !q[7]).sort((a, b) => b[1][6] - a[1][6]).slice(0, 20);
         const weak = runs.filter(r => r.cand[5] === 'weak').length;
         const name = personName(p[0], p[1], p[2], p[3]);
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/regional' }, { label: title(shard.name), href: hrefProvince(provSlug) }, { label: name }])}
+        root.innerHTML = `<div class="page">${crumbs([{ label: 'Officials directory', href: '/officials' }, { label: title(shard.name), href: hrefProvince(provSlug) }, { label: name }])}
   <div class="page-h"><div><div class="kicker">${esc(title(shard.name))} · ${esc(regionLabel(shard.region))} ${sexMark(p[4])}</div><h1>${esc(name)}</h1>
   <div class="mono mute">${runs.length} run${runs.length === 1 ? '' : 's'} · ${wins} won · ${runs.length - wins} lost · ${Math.min(...years)}–${Math.max(...years)}${posts.length ? ' · ' + esc(posts.join(', ')) : ''}${parties.length ? ' · ' + esc(parties.join(', ')) : ''}</div></div></div>
   <div class="cols"><div class="main">
