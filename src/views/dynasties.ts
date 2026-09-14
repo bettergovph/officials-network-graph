@@ -17,7 +17,7 @@ type Dir = 'atlas' | 'network' | 'ledger';
 type SortKey = 'sur' | 'prov' | 'n' | 'nmid' | 'terms' | 'share' | 'votes' | 'top' | 'pov';
 type NodeType = 'r' | 'p' | 's' | 'f' | 'c';
 type LinkType = 'rp' | 'ps' | 'sf' | 'fc' | 'pc' | 'ss';
-interface GNode extends d3.SimulationNodeDatum { id: string; t: NodeType; label: string; r: number; x: number; y: number; prov?: string; region?: string; c?: Cluster; via?: Via }
+interface GNode extends d3.SimulationNodeDatum { id: string; t: NodeType; label: string; r: number; x: number; y: number; prov?: string; region?: string; city?: string; c?: Cluster; via?: Via }
 interface GLink extends d3.SimulationLinkDatum<GNode> { t: LinkType }
 
 const POVALIAS: Record<string, string> = { "TAWI TAWI": "TAWI-TAWI", "MAGUINDANAO DEL SUR": "MAGUINDANAO", "MAGUINDANAO DEL NORTE": "MAGUINDANAO", "DAVAO DE ORO": "COMPOSTELA VALLEY", "NCR FIRST DISTRICT": "NCR, CITY OF MANILA, FIRST DISTRICT", "NCR SECOND DISTRICT": "NCR, SECOND DISTRICT", "NCR THIRD DISTRICT": "NCR, THIRD DISTRICT", "NCR FOURTH DISTRICT": "NCR, FOURTH DISTRICT" };
@@ -404,7 +404,7 @@ function buildGraph() {
             const n: GNode = { id: c.id + '#' + i, t: 'f', via: m.via, label: title(m.first_name), r: 2.5, x: 0, y: 0 };
             nodes.push(n); links.push({ source: s.id, target: n.id, t: 'sf' });
             const city = latest(m).city;
-            if (city) { const k = c.prov + '|' + city; let cn = cid[k]; if (!cn) { cn = cid[k] = { id: 'c|' + k, t: 'c', label: title(city), r: 3.5, prov: c.prov, x: 0, y: 0 }; nodes.push(cn); links.push({ source: pn.id, target: cn.id, t: 'pc' }); } links.push({ source: n.id, target: cn.id, t: 'fc' }); }
+            if (city) { const k = c.prov + '|' + city; let cn = cid[k]; if (!cn) { cn = cid[k] = { id: 'c|' + k, t: 'c', label: title(city), r: 3.5, prov: c.prov, city, x: 0, y: 0 }; nodes.push(cn); links.push({ source: pn.id, target: cn.id, t: 'pc' }); } links.push({ source: n.id, target: cn.id, t: 'fc' }); }
         });
     }
     for (const arr of Object.values(sid)) if (arr.length > 1) for (let i = 1; i < arr.length; i++) links.push({ source: arr[0]!.id, target: arr[i]!.id, t: 'ss' });
@@ -422,8 +422,8 @@ function ensureCanvas() {
     const canvas = document.createElement('canvas'); host.appendChild(canvas); gCanvas = canvas; gCtx = canvas.getContext('2d');
     gZoom = d3.zoom<HTMLCanvasElement, unknown>().scaleExtent([.02, 8]).on('zoom', e => { gT = e.transform; if (e.sourceEvent) autoFit = false; drawGraph(); });
     d3.select(canvas).call(gZoom).on('dblclick.zoom', () => { autoFit = true; fitGraph(); });
-    canvas.addEventListener('mousemove', e => { const n = pick(e); if (n !== gHover) { gHover = n; canvas.style.cursor = n && (n.t === 's' || n.t === 'p' || n.t === 'r') ? 'pointer' : 'default'; drawGraph(); } });
-    canvas.addEventListener('click', e => { const n = pick(e); if (!n) return; if (n.t === 's' && n.c) select(n.c.id); else if (n.t === 'p' && n.prov !== undefined) setProvince(n.prov === S.province ? '' : n.prov); else if (n.t === 'r' && n.region !== undefined) setRegion(n.region === S.region ? '' : n.region); });
+    canvas.addEventListener('mousemove', e => { const n = pick(e); if (n !== gHover) { gHover = n; canvas.style.cursor = n && n.t !== 'f' ? 'pointer' : 'default'; drawGraph(); } });
+    canvas.addEventListener('click', e => { const n = pick(e); if (!n) return; if (n.t === 's' && n.c) select(n.c.id); else if (n.t === 'p' && n.prov !== undefined) setProvince(n.prov === S.province ? '' : n.prov); else if (n.t === 'r' && n.region !== undefined) setRegion(n.region === S.region ? '' : n.region); else if (n.t === 'c' && n.prov !== undefined && n.city !== undefined) { if (S.province !== n.prov) setProvince(n.prov); setTown(S.town === n.city ? '' : n.city); } });
 }
 function pick(e: MouseEvent): GNode | null {
     if (!gCanvas) return null;
@@ -439,7 +439,7 @@ function drawGraph() {
     if (gCanvas.width !== W * dpr || gCanvas.height !== H * dpr) { gCanvas.width = W * dpr; gCanvas.height = H * dpr; gCanvas.style.width = W + 'px'; gCanvas.style.height = H + 'px'; }
     const C = { sur: cssVar('--sur'), prov: cssVar('--prov'), ppl: cssVar('--ppl'), amber: cssVar('--amber'), ink: cssVar('--ink'), bg: cssVar('--bg'), mute: cssVar('--mute') };
     const x = gCtx; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H); x.translate(W / 2 + gT.x, H / 2 + gT.y); x.scale(gT.k, gT.k);
-    const selId = S.sel; const hl = (n: GNode) => n === gHover || (n.t === 's' && n.c?.id === selId);
+    const selId = S.sel; const hl = (n: GNode) => n === gHover || (n.t === 's' && n.c?.id === selId) || (n.t === 'c' && !!S.town && n.city === S.town);
     x.lineWidth = .6 / gT.k;
     for (const l of gLinks) {
         const a = l.source as GNode, b = l.target as GNode;
@@ -465,14 +465,14 @@ function drawGraph() {
 }
 
 // ----- wiring -----
-function select(id: string) { S.sel = id; S.tab = 'blocs'; renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas') void renderMap(); }
+function select(id: string) { S.sel = id; S.tab = 'blocs'; syncUrl(); renderRank(); el('rankbody').scrollTop = 0; document.querySelectorAll<HTMLElement>('.rk[data-id], .row[data-id]').forEach(e => e.setAttribute('aria-current', String(e.dataset['id'] === id))); drawGraph(); if (S.dir === 'atlas') void renderMap(); }
 function setRegion(r: string) {
     if (r === '' && heavy(S.dir, '') && !heavy() && !confirm(HEAVY_WARNING)) return;
     S.region = r; S.province = ''; S.town = ''; S.sel = null;
     el<HTMLSelectElement>('region').value = r; el('provpill').hidden = true; store('dyn.region', r);
     refresh(true);
 }
-function setTown(t: string) { S.town = t; S.sel = null; if (t) S.tab = 'blocs'; renderRank(); if (S.dir === 'atlas') void renderMap(); }
+function setTown(t: string) { S.town = t; S.sel = null; if (t) S.tab = 'blocs'; syncUrl(); renderRank(); if (S.dir === 'atlas') void renderMap(); }
 function setProvince(p: string) {
     S.province = p; S.town = '';
     if (p) { const prov = PROV[p]; if (prov) { S.region = prov.region; el<HTMLSelectElement>('region').value = S.region; } }
@@ -480,14 +480,40 @@ function setProvince(p: string) {
     pill.querySelector('button')?.addEventListener('click', () => setProvince(''));
     refresh(true);
 }
-/** Mirror the scope into the URL (replace, not push) so reloads and remounts keep it. */
+/** The URL carries the whole scope (region, province, town, surname). Each step pushes a history entry so
+ *  back and forward walk the hierarchy; applying history or mounting replaces instead. */
 const VIEW_PATHS = new Set(['/', '/dynasties', '/atlas', '/network', '/ledger']);
+let applyingUrl = false;
+function scopeQuery(): string {
+    if (!INDEX) return '';
+    const p = new URLSearchParams();
+    if (S.province) { p.set('province', INDEX.regions.flatMap(r => r.provinces).find(x => x.name === S.province)?.slug ?? slug(S.province)); if (S.town) p.set('town', slug(S.town)); }
+    else if (S.region) p.set('region', INDEX.regions.find(r => r.name === S.region)?.slug ?? slug(S.region));
+    const sel = S.sel ? CLBY[S.sel] : undefined;
+    if (sel) { if (!S.province) p.set('province', INDEX.regions.flatMap(r => r.provinces).find(x => x.name === sel.prov)?.slug ?? slug(sel.prov)); p.set('sur', sel.sur); }
+    const q = p.toString();
+    return q ? '?' + q : '';
+}
 function syncUrl() {
     if (!VIEW_PATHS.has(location.pathname)) return;
-    const q = S.province && INDEX ? `?province=${INDEX.regions.flatMap(r => r.provinces).find(p => p.name === S.province)?.slug ?? slug(S.province)}` : S.region && INDEX ? `?region=${INDEX.regions.find(r => r.name === S.region)?.slug ?? slug(S.region)}` : '';
     const path = S.dir === 'atlas' && (location.pathname === '/' || location.pathname === '/dynasties') ? location.pathname : `/${S.dir}`;
-    const next = path + q;
-    if (next !== location.pathname + location.search) history.replaceState(null, '', next);
+    const next = path + scopeQuery();
+    if (next === location.pathname + location.search) return;
+    if (applyingUrl) history.replaceState(null, '', next); else history.pushState(null, '', next);
+}
+/** Read the scope from the URL into S. Requires PROV to be built for the current year. */
+function applyFromUrl() {
+    const q = new URLSearchParams(location.search);
+    const provSlug = q.get('province'), regSlug = q.get('region'), townSlug = q.get('town'), sur = q.get('sur');
+    S.region = ''; S.province = ''; S.town = ''; S.sel = null;
+    if (INDEX) for (const r of INDEX.regions) {
+        if (regSlug && r.slug === regSlug) S.region = r.name;
+        for (const p of r.provinces) if (provSlug && p.slug === provSlug) { S.region = r.name; S.province = p.name; if (townSlug) S.town = p.cities.find(c => c.slug === townSlug)?.name ?? ''; }
+    }
+    if (S.province && !PROV[S.province]) { S.province = ''; S.town = ''; }
+    if (sur && S.province && CLBY[`${S.province}|${sur}`]) S.sel = `${S.province}|${sur}`;
+    const sel = el<HTMLSelectElement>('region'); if (sel) sel.value = S.region;
+    const pill = el('provpill'); if (pill) { pill.hidden = !S.province; pill.innerHTML = S.province ? `${title(S.province)} <button title="clear">×</button>` : ''; pill.querySelector('button')?.addEventListener('click', () => setProvince('')); }
 }
 function refresh(regraph: boolean) {
     syncUrl();
@@ -563,6 +589,8 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
     dyn.querySelector('#crumbs')!.addEventListener('click', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('button[data-level]'); if (b) goLevel(b.dataset['level'] as Level); });
     dyn.querySelector('#tablebody')!.addEventListener('click', e => { const target = e.target as HTMLElement; const th = target.closest<HTMLElement>('th[data-k]'); if (th) { const k = th.dataset['k'] as SortKey; S.sort = S.sort.k === k ? { k, asc: !S.sort.asc } : { k, asc: k === 'sur' || k === 'prov' }; renderTable(); return; } if (target.closest('#more')) { S.limit += 150; renderTable(); return; } const tr = target.closest<HTMLElement>('tr.row'); if (tr?.dataset['id']) select(tr.dataset['id']); });
     dyn.querySelector('.scroll-hint')?.addEventListener('click', e => { e.preventDefault(); dyn.querySelector('#rank')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    const onPop = () => { if (!ALL.length) return; applyingUrl = true; applyFromUrl(); refresh(true); applyingUrl = false; };
+    window.addEventListener('dyn:popstate', onPop);
     window.addEventListener('resize', onResize);
     const onTheme = () => { if (!ALL.length) return; if (S.dir === 'atlas') { provLayer?.remove(); provLayer = null; regionLayer?.remove(); regionLayer = null; cityLayer?.remove(); cityLayer = null; cityLayerFor = ''; } refresh(false); };
     window.addEventListener('themechange', onTheme);
@@ -574,14 +602,6 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
             if (!alive) return;
             const latest = YEARS[YEARS.length - 1]!;
             if (S.year !== 'all' && !YEARS.some(y => String(y) === S.year)) S.year = String(latest);
-            // Deep links from province and person pages: /?province=abra or /?region=region-i
-            const q = new URLSearchParams(location.search);
-            const provSlug = q.get('province'), regSlug = q.get('region');
-            let wantProvince = '';
-            for (const r of INDEX!.regions) {
-                if (regSlug && r.slug === regSlug) S.region = r.name;
-                for (const p of r.provinces) if (provSlug && p.slug === provSlug) { S.region = r.name; wantProvince = p.name; }
-            }
             const ys = el('yearseg');
             ys.innerHTML = YEARS.slice().reverse().map(y => `<button data-y="${y}">${y}</button>`).join('') + `<button data-y="all" title="Loads every election">All</button>`;
             const ysel = el<HTMLSelectElement>('yearsel');
@@ -590,15 +610,13 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
             const sel = el<HTMLSelectElement>('region');
             const regions = INDEX!.regions.map(r => r.name).sort();
             regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = regionLabel(r); sel.appendChild(o); });
-            if (S.region && !regions.includes(S.region)) S.region = '';
-            sel.value = S.region;
             dyn.querySelectorAll<HTMLButtonElement>('#minseg button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset['min']! === S.min)));
             dyn.querySelectorAll<HTMLButtonElement>('#review button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['dir'] === S.dir)));
             busy(`loading ${S.year === 'all' ? `${YEARS.length} elections` : S.year}…`);
             await ensureYears(yearsNeeded());
             if (!alive) return;
             busy(null); build();
-            if (wantProvince && PROV[wantProvince]) setProvince(wantProvince); else refresh(true);
+            applyingUrl = true; applyFromUrl(); refresh(true); applyingUrl = false; // the URL is the source of truth: a bare / means whole country
         } catch (err) {
             busy('could not load election data — ' + (err instanceof Error ? err.message : String(err)));
             document.getElementById('spin')?.classList.add('err');
@@ -607,6 +625,7 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
     return () => {
         alive = false;
         window.removeEventListener('resize', onResize);
+        window.removeEventListener('dyn:popstate', onPop);
         window.removeEventListener('themechange', onTheme);
         LM?.remove(); LM = null; provLayer = null; regionLayer = null; cityLayer = null; labelLayer = null; cityLayerFor = ''; mapLastKey = null; mapToken++; curProvStyle = null; curCityStyle = null; hoverProv = ''; hoverCity = '';
         sim?.stop(); sim = null; gCanvas = null; gCtx = null; gHover = null;

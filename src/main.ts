@@ -31,6 +31,7 @@ let cleanup: (() => void) | null = null;
 
 async function render() {
     const path = location.pathname.replace(/\/+$/, '') || '/';
+    lastPath = location.pathname;
     const query = new URLSearchParams(location.search);
     if (cleanup) { cleanup(); cleanup = null; }
     document.body.classList.toggle('full', ['/', '/dynasties', '/atlas', '/network', '/ledger'].includes(path));
@@ -55,7 +56,13 @@ document.addEventListener('click', e => {
     if (a.href !== location.href) history.pushState(null, '', a.href);
     render();
 });
-window.addEventListener('popstate', render);
+const DYN = /^\/(?:dynasties|atlas|network|ledger)?$/;
+let lastPath = '';
+window.addEventListener('popstate', () => {
+    // Inside a dynasty view, a history step that only changes the query is a scope change: apply it in place.
+    if (cleanup && DYN.test(lastPath) && lastPath === location.pathname) { window.dispatchEvent(new Event('dyn:popstate')); return; }
+    render();
+});
 
 // Theme: dark by default, remembered per browser. Views that paint with canvas or Leaflet listen for 'themechange'.
 const themeBtn = document.getElementById('theme') as HTMLButtonElement;
