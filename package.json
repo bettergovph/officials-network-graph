@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "npm run build && wrangler dev",
-    "data": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-data.ts",
+    "data": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-data.ts && npm run geo",
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p worker/tsconfig.json",
     "d1:import": "bash scripts/d1-import.sh",
     "d1:import:local": "bash scripts/d1-import.sh --local",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "geo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-geo.ts"
   },
   "keywords": [],
   "author": "",

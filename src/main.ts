@@ -4,11 +4,14 @@ import { person } from './views/person';
 import { search } from './views/search';
 import { national } from './views/national';
 import { people } from './views/people';
+import { regions } from './views/regions';
 import { mountDynasties } from './views/dynasties';
 
 type View = (root: HTMLElement, params: string[], query: URLSearchParams) => void | Promise<void> | (() => void);
 const routes: { pattern: RegExp; view: View; nav?: string }[] = [
-    { pattern: /^\/$/, view: root => home(root), nav: 'map' },
+    { pattern: /^\/$/, view: root => mountDynasties(root), nav: 'dynasties' },
+    { pattern: /^\/map\/?$/, view: root => home(root), nav: 'map' },
+    { pattern: /^\/regions\/?$/, view: root => regions(root), nav: 'regions' },
     { pattern: /^\/national(?:\/(\d{4}))?\/?$/, view: (root, [y]) => national(root, y), nav: 'national' },
     { pattern: /^\/region\/([^/]+)\/?$/, view: (root, [s]) => region(root, s!), nav: 'map' },
     { pattern: /^\/province\/([^/]+)\/?$/, view: (root, [s], q) => province(root, s!, q), nav: 'map' },
@@ -26,7 +29,7 @@ async function render() {
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const query = new URLSearchParams(location.search);
     if (cleanup) { cleanup(); cleanup = null; }
-    document.body.classList.toggle('full', path === '/dynasties');
+    document.body.classList.toggle('full', path === '/' || path === '/dynasties');
     for (const r of routes) {
         const m = path.match(r.pattern);
         if (!m) continue;
@@ -36,7 +39,7 @@ async function render() {
         if (!location.hash) view.scrollTop = 0;
         return;
     }
-    view.innerHTML = `<div class="page"><div class="empty"><b>Page not found</b><a href="/">Back to the map</a></div></div>`;
+    view.innerHTML = `<div class="page"><div class="empty"><b>Page not found</b><a href="/map">Back to the map</a></div></div>`;
 }
 
 document.addEventListener('click', e => {

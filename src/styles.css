@@ -30,6 +30,7 @@ body[data-dir="ledger"] {
 }
 
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased }
 a { color: var(--prov); text-decoration: none }
@@ -180,7 +181,8 @@ body[data-dir="ledger"] .leaflet-tile-pane { filter: saturate(.2) brightness(1.0
 .leaflet-bottom.leaflet-right { right: 180px }
 .bub { cursor: pointer }
 .bub:hover { stroke: var(--ink) }
-.mlbl { font: 500 10px var(--mono); color: var(--ink); white-space: nowrap; text-shadow: 0 0 4px var(--bg), 0 0 4px var(--bg); pointer-events: none; transform: translate(-50%, -100%) }
+.mlbl { font: 500 10px var(--mono); color: var(--ink); white-space: nowrap; text-shadow: 0 0 4px var(--bg), 0 0 4px var(--bg); pointer-events: none; transform: translate(-50%, -50%) }
+.leaflet-interactive { cursor: pointer }
 .hint { position: absolute; right: 56px; bottom: 18px; font: 500 11px var(--mono); color: var(--faint); z-index: 500 }
 
 .spin { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); font: 500 12px var(--mono); z-index: 5; background: var(--bg) }
@@ -193,10 +195,10 @@ header.top { display: flex; align-items: center; gap: 22px; padding: 10px 20px; 
 .brand:hover { text-decoration: none }
 .brand b { font-size: 18px; font-weight: 700; letter-spacing: -.01em }
 .brand span { font: 500 11px var(--mono); color: var(--mute); letter-spacing: .04em; text-transform: uppercase }
-nav.topnav { display: flex; gap: 2px; padding: 3px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; height: 34px }
-nav.topnav a { padding: 0 14px; border-radius: 7px; color: var(--mute); font-size: 13px; display: inline-flex; align-items: center; text-decoration: none }
-nav.topnav a:hover { color: var(--ink) }
-nav.topnav a[aria-current="true"] { background: var(--ink); color: var(--bg); font-weight: 600 }
+nav.topnav { display: flex; gap: 22px; height: 34px; align-items: center }
+nav.topnav a { color: var(--mute); font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent }
+nav.topnav a:hover { color: var(--ink); text-decoration: none }
+nav.topnav a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--sur) }
 .topsearch { margin-left: auto }
 .topsearch input { width: 260px }
 main#view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto }

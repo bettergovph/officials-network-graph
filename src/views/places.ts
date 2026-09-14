@@ -19,7 +19,7 @@ export async function home(root: HTMLElement) {
   <section class="hero"><div class="kicker">Philippines · ${index.years[0]}–${latest}</div><h1>The political map</h1>
     <p>Every candidate for local office since ${index.years[0]}, who won, who lost, and who keeps coming back. Browse by region, province and town, or look up a name.</p>
     <div class="stats wide"><div class="stat"><b>${fmt(index.totals.persons)}</b><span>people</span></div><div class="stat"><b>${fmt(index.totals.candidacies)}</b><span>candidacies</span></div><div class="stat"><b>${fmt(index.totals.contests)}</b><span>contests</span></div><div class="stat"><b>${fmt(index.totals.repeat)}</b><span>ran more than once</span></div><div class="stat"><b>${fmt(index.totals.cities)}</b><span>cities &amp; towns</span></div><div class="stat"><b>${index.years.length}</b><span>elections</span></div></div>
-    <div class="actions"><a class="btn" href="/search">Search a politician</a><a class="btn ghost" href="/dynasties">Surname blocs</a><a class="btn ghost" href="/people">Repeat politicians</a><a class="btn ghost" href="/national/${latest}">National results</a></div></section>
+    <div class="actions"><a class="btn" href="/search">Search a politician</a><a class="btn ghost" href="/">Surname blocs</a><a class="btn ghost" href="/regions">Regions</a><a class="btn ghost" href="/people">Repeat politicians</a><a class="btn ghost" href="/national/${latest}">National results</a></div></section>
   ${nat ? `<section><div class="sec-h"><h2>${latest} national results</h2><a class="more-link" href="/national/${latest}">all races</a></div><div class="grid3">
     ${pres ? `<div class="card pad"><div class="kicker">President</div><b class="big">${esc(title(pres[0]))}</b><span class="mono mute">${esc(pres[1])} · ${fmt(pres[2])} votes</span></div>` : ''}
     ${vp ? `<div class="card pad"><div class="kicker">Vice President</div><b class="big">${esc(title(vp[0]))}</b><span class="mono mute">${esc(vp[1])} · ${fmt(vp[2])} votes</span></div>` : ''}
@@ -40,7 +40,7 @@ export async function region(root: HTMLElement, slug: string) {
         const r = index.regions.find(x => x.slug === slug);
         if (!r) { failed(root, 'No such region'); return; }
         const latest = index.years[index.years.length - 1]!;
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/' }, { label: regionLabel(r.name) }])}
+        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/map' }, { label: regionLabel(r.name) }])}
   <h1>${esc(regionLabel(r.name))}</h1>
   <table class="list"><thead><tr><th>Province</th><th class="num">Towns</th><th class="num">Seats ${latest}</th><th class="num">Candidates ${latest}</th><th class="num">People since ${index.years[0]}</th><th class="num">Poverty</th></tr></thead><tbody>
   ${r.provinces.map(p => `<tr><td><a href="${hrefProvince(p.slug)}"><b>${esc(title(p.name))}</b></a></td><td class="num">${p.cities.length}</td><td class="num">${fmt(p.years[String(latest)]?.seats)}</td><td class="num">${fmt(p.years[String(latest)]?.candidacies)}</td><td class="num">${fmt(p.persons)}</td><td class="num">${p.poverty != null ? p.poverty + '%' : '–'}</td></tr>`).join('')}</tbody></table></div>`;
@@ -68,7 +68,7 @@ export async function province(root: HTMLElement, slug: string, q: URLSearchPara
         const top = Object.entries(shard.persons).filter(([, p]) => !p[7]).sort((a, b) => b[1][6] - a[1][6] || b[1][5] - a[1][5]).slice(0, 12);
         const nat = shard.national[String(year)];
         const senators = nat?.['SENATOR']?.slice(0, 12) ?? [];
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/' }, { label: regionLabel(shard.region), href: hrefRegion(index.regions.find(r => r.name === shard.region)?.slug ?? '') }, { label: title(shard.name) }])}
+        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/map' }, { label: regionLabel(shard.region), href: hrefRegion(index.regions.find(r => r.name === shard.region)?.slug ?? '') }, { label: title(shard.name) }])}
   <div class="page-h"><div><h1>${esc(title(shard.name))}</h1><div class="mono mute">${esc(regionLabel(shard.region))} · ${found.province.cities.length} cities and towns${shard.poverty != null ? ` · poverty incidence ${shard.poverty}%` : ''} · ${fmt(found.province.persons)} people have run here since ${years[0]}</div></div>${yearTabs(years, year, y => hrefProvince(slug, y))}</div>
   <div class="cols">
     <div class="main">
@@ -81,7 +81,7 @@ export async function province(root: HTMLElement, slug: string, q: URLSearchPara
     <aside class="side">
       <div class="card pad"><div class="kicker">Most elected in ${esc(title(shard.name))}</div><ol class="plain">${top.map(([id, p]) => `<li><a href="${hrefPerson(slug, id)}">${esc(personName(p[0], p[1], '', p[3]))}</a> <span class="mono mute">${p[6]}/${p[5]}</span></li>`).join('')}</ol></div>
       ${senators.length ? `<div class="card pad"><div class="kicker">${year} Senate vote in ${esc(title(shard.name))}</div><ol class="plain">${senators.map(s => `<li>${esc(title(s[0]))} <span class="mono mute">${fmt(s[2])}${s[3] ? '' : ' · lost'}</span></li>`).join('')}</ol>${nat?.['PRESIDENT']?.length ? `<div class="kicker" style="margin-top:12px">President</div><ol class="plain">${nat['PRESIDENT'].slice(0, 3).map(s => `<li>${esc(title(s[0]))} <span class="mono mute">${fmt(s[2])}</span></li>`).join('')}</ol>` : ''}</div>` : ''}
-      <div class="card pad"><div class="kicker">Surname blocs</div><a href="/dynasties">Open the dynasty view</a> to see which surnames hold the most seats here.</div>
+      <div class="card pad"><div class="kicker">Surname blocs</div><a href="/?province=${slug}">Open the dynasty view for ${esc(title(shard.name))}</a> to see which surnames hold the most seats here.</div>
     </aside></div></div>`;
     } catch (e) { failed(root, e); }
 }
@@ -98,7 +98,7 @@ export async function town(root: HTMLElement, slug: string, citySlug: string, q:
         const year = pickYear(years, q);
         const ks = all.filter(k => k.year === year).sort(sortContests);
         const history = years.slice().reverse().map(y => { const list = all.filter(k => k.year === y); const w = (pos: string) => { const k = list.find(x => x.position === pos); return k ? winnersOf(k, shard, slug) : '<span class="mute">—</span>'; }; return `<tr><td><a href="${hrefTown(slug, citySlug, y)}">${y}</a></td><td>${w('MAYOR')}</td><td>${w('VICE MAYOR')}</td><td class="num">${fmt(list.reduce((s, k) => s + k.c.length, 0))}</td></tr>`; }).join('');
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/' }, { label: regionLabel(shard.region), href: hrefRegion(index.regions.find(r => r.name === shard.region)?.slug ?? '') }, { label: title(shard.name), href: hrefProvince(slug, year) }, { label: title(city.name) }])}
+        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/map' }, { label: regionLabel(shard.region), href: hrefRegion(index.regions.find(r => r.name === shard.region)?.slug ?? '') }, { label: title(shard.name), href: hrefProvince(slug, year) }, { label: title(city.name) }])}
   <div class="page-h"><div><h1>${esc(title(city.name))}</h1><div class="mono mute">${esc(title(shard.name))} · ${esc(regionLabel(shard.region))}</div></div>${yearTabs(years, year, y => hrefTown(slug, citySlug, y))}</div>
   <div class="cols"><div class="main">
     ${ks.length ? ks.map(k => contestCard(k, shard, slug)).join('') : '<div class="empty">No contests recorded for this year.</div>'}

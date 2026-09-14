@@ -17,7 +17,7 @@ export async function person(root: HTMLElement, provSlug: string, pid: string) {
         const sameSurname = Object.entries(shard.persons).filter(([id, q]) => id !== pid && q[0] === p[0] && !q[7]).sort((a, b) => b[1][6] - a[1][6]).slice(0, 20);
         const weak = runs.filter(r => r.cand[5] === 'weak').length;
         const name = personName(p[0], p[1], p[2], p[3]);
-        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/' }, { label: title(shard.name), href: hrefProvince(provSlug) }, { label: name }])}
+        root.innerHTML = `<div class="page">${crumbs([{ label: 'Philippines', href: '/map' }, { label: title(shard.name), href: hrefProvince(provSlug) }, { label: name }])}
   <div class="page-h"><div><div class="kicker">${esc(title(shard.name))} · ${esc(regionLabel(shard.region))} ${sexMark(p[4])}</div><h1>${esc(name)}</h1>
   <div class="mono mute">${runs.length} run${runs.length === 1 ? '' : 's'} · ${wins} won · ${runs.length - wins} lost · ${Math.min(...years)}–${Math.max(...years)}${posts.length ? ' · ' + esc(posts.join(', ')) : ''}${parties.length ? ' · ' + esc(parties.join(', ')) : ''}</div></div></div>
   <div class="cols"><div class="main">
@@ -27,7 +27,7 @@ export async function person(root: HTMLElement, provSlug: string, pid: string) {
     ${weak ? `<p class="note">${weak} of these rows were matched to this person by a nickname or partial first name in the same town. Names on ballots vary between elections, so treat those as probable rather than certain.</p>` : ''}
     <p class="note">Winners before 2010 come from the official winners list without vote counts. Some 2010 and 2013 towns are missing from the vote counts entirely.</p>
   </div><aside class="side">
-    ${sameSurname.length ? `<div class="card pad"><div class="kicker">Other ${esc(title(p[0]))}s in ${esc(title(shard.name))}</div><ol class="plain">${sameSurname.map(([id, q]) => `<li><a href="${hrefPerson(provSlug, id)}">${esc(personName(q[0], q[1], '', q[3]))}</a> <span class="mono mute">${q[6]}/${q[5]}</span></li>`).join('')}</ol><a class="mono" href="/dynasties">See surname blocs →</a></div>` : ''}
+    ${sameSurname.length ? `<div class="card pad"><div class="kicker">Other ${esc(title(p[0]))}s in ${esc(title(shard.name))}</div><ol class="plain">${sameSurname.map(([id, q]) => `<li><a href="${hrefPerson(provSlug, id)}">${esc(personName(q[0], q[1], '', q[3]))}</a> <span class="mono mute">${q[6]}/${q[5]}</span></li>`).join('')}</ol><a class="mono" href="/?province=${provSlug}">See surname blocs →</a></div>` : ''}
     <div class="card pad"><div class="kicker">About this record</div><p class="mute">People are matched across elections by surname, first name and middle name within a province. Two candidates with the same name in different towns are kept apart. Person id <code>${esc(pid)}</code>.</p></div>
   </aside></div></div>`;
     } catch (e) { failed(root, e); }
