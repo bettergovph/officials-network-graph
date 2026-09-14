@@ -504,7 +504,7 @@ const onResize = () => { if (S.dir === 'atlas' && LM) LM.invalidateSize(); if (S
 const MARKUP = `<div class="dyn">
 <div class="dyn-toolbar">
   <nav id="review" aria-label="Views"><button data-dir="atlas">Atlas</button><button data-dir="network">Network</button><button data-dir="ledger">Ledger</button></nav>
-  <div class="ctl"><label>Year</label><div class="seg" id="yearseg"></div></div>
+  <div class="ctl ctl-year"><label>Year</label><div class="seg" id="yearseg"></div><select id="yearsel" aria-label="Year"></select></div>
   <div class="ctl"><label>Scope</label><select id="region"><option value="">Whole country</option></select><span id="provpill" class="pill" hidden></span></div>
   <div class="ctl"><label>Rule</label><div class="seg" id="minseg"><button data-min="2" aria-pressed="true">≥2 seats</button><button data-min="3">≥3</button><button data-min="5">≥5</button></div></div>
   <input id="q" type="search" placeholder="Filter surname…" autocomplete="off" aria-label="Filter surname">
@@ -534,13 +534,14 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
         busy(null); build(); S.limit = 150; refresh(true);
     };
     dyn.querySelector('#review')!.addEventListener('click', e => { const b = closestButton(e); const d = b?.dataset['dir']; if (!d || !DIRS.some(x => x === d)) return; if (heavy(d as Dir) && !heavy() && !confirm(HEAVY_WARNING)) return; setDir(d as Dir); });
-    dyn.querySelector('#yearseg')!.addEventListener('click', e => {
-        const b = closestButton(e); if (!b || !b.dataset['y']) return;
-        if (heavy(S.dir, S.region, b.dataset['y']) && !heavy() && !confirm(HEAVY_WARNING)) return;
-        S.year = b.dataset['y']; store('dyn.year', S.year);
-        dyn.querySelectorAll<HTMLButtonElement>('#yearseg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-        void rebuild();
-    });
+    const syncYear = () => { dyn.querySelectorAll<HTMLButtonElement>('#yearseg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset['y'] === S.year))); const sel = dyn.querySelector<HTMLSelectElement>('#yearsel'); if (sel) sel.value = S.year; };
+    const chooseYear = (y: string) => {
+        if (y === S.year) return;
+        if (heavy(S.dir, S.region, y) && !heavy() && !confirm(HEAVY_WARNING)) { syncYear(); return; }
+        S.year = y; store('dyn.year', S.year); syncYear(); void rebuild();
+    };
+    dyn.querySelector('#yearseg')!.addEventListener('click', e => { const b = closestButton(e); if (b?.dataset['y']) chooseYear(b.dataset['y']); });
+    dyn.querySelector<HTMLSelectElement>('#yearsel')!.addEventListener('change', e => chooseYear((e.target as HTMLSelectElement).value));
     dyn.querySelector<HTMLSelectElement>('#region')!.addEventListener('change', e => {
         const sel = e.target as HTMLSelectElement;
         if (heavy(S.dir, sel.value) && !heavy() && !confirm(HEAVY_WARNING)) { sel.value = S.region; return; }
@@ -581,7 +582,9 @@ export function mountDynasties(root: HTMLElement, dir: Dir = 'atlas'): () => voi
             }
             const ys = el('yearseg');
             ys.innerHTML = YEARS.slice().reverse().map(y => `<button data-y="${y}">${y}</button>`).join('') + `<button data-y="all" title="Loads every election">All</button>`;
-            ys.querySelectorAll<HTMLButtonElement>('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset['y'] === S.year)));
+            const ysel = el<HTMLSelectElement>('yearsel');
+            ysel.innerHTML = YEARS.slice().reverse().map(y => `<option value="${y}">${y}</option>`).join('') + `<option value="all">All elections</option>`;
+            syncYear();
             const sel = el<HTMLSelectElement>('region');
             const regions = INDEX!.regions.map(r => r.name).sort();
             regions.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = regionLabel(r); sel.appendChild(o); });
