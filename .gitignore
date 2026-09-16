@@ -13,3 +13,11 @@ Thumbs.db
 
 # Vite
 *.local
+
+# Generated data (rebuild with npm run data)
+data/raw/
+data/*.sqlite
+data/d1/
+
+# Wrangler local state
+.wrangler/

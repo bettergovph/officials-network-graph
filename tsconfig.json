@@ -9,7 +9,7 @@
     // Emit ES modules for browser consumption
     "module": "ESNext",
     "target": "esnext",
-    "types": ["jquery"],
+    "types": ["vite/client"],
     "lib": [
       "esnext",
       "dom"
