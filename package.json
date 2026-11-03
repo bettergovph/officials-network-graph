@@ -9,6 +9,7 @@
     "preview": "npm run build && wrangler dev",
     "data": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-data.ts && npm run geo",
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p worker/tsconfig.json",
+    "test": "node --test tests/*.test.mjs",
     "d1:import": "bash scripts/d1-import.sh",
     "d1:import:local": "bash scripts/d1-import.sh --local",
     "deploy": "npm run build && wrangler deploy",

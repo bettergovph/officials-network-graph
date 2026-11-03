@@ -1,6 +1,16 @@
 # Dynasties API and MCP server
 
-Base URL: `https://officials.bettergov.ph` (the site itself is at `https://dynasties.bettergov.ph`; the same routes also answer there). Read-only, no authentication, CORS open. Responses are cached at the edge for a day; the data changes once per election.
+Base URL: `https://officials.bettergov.ph` (the site itself is at `https://dynasties.bettergov.ph`; the same routes also answer there). Read-only, no authentication, CORS open. Successful data results are cached at the edge for up to a day; the data changes once per election.
+
+## Result caching
+
+The Worker uses Cloudflare's Cache API before querying D1. REST (including legacy routes) and MCP share entries for the same data operation and parsed arguments on the same hostname. Query-string ordering and unused parameters do not affect these entries. Search caches both the people and place lookups. MCP caches only tool data: each response retains the current request's JSON-RPC id and `Cache-Control: no-store`.
+
+Data results and sitemaps have a 24-hour edge TTL; rendered HTML has a one-hour edge TTL. Cache contents are local to a Cloudflare data center and may be evicted sooner, so a miss still queries D1. Simultaneous cold requests can also query D1 independently. There is no KV or additional storage service.
+
+Responses include `X-Result-Cache`: `HIT` when all performed lookups hit, `MISS` when all missed, `MIXED` when some hit and some missed (for example a search or MCP batch), and `BYPASS` when no cache lookup was performed. Errors, 404 pages, and generic HTML returned after a database failure are not stored. Cache read/write failures fall back to normal request handling.
+
+Keys include the Worker deployment id, the built data vintage, and `CACHE_VERSION` from `wrangler.jsonc`. Each deployment starts a fresh cache namespace, including HTML referencing new frontend assets. After updating D1 in place, bump `CACHE_VERSION` and deploy; do not rely on expiry to publish corrections. Coordinate database imports and deployment because the existing import script replaces tables in place. Browser-cached responses can remain for their advertised lifetime (one hour for REST, ten minutes for HTML). Missing deployment metadata or an unreadable data vintage disables result caching until metadata is available.
 
 Every REST response is an envelope:
 

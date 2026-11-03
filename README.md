@@ -36,6 +36,7 @@ npm install
 npm run data        # download sources, build data/dynasty.sqlite, data/d1, public/data, docs/coverage.md, then boundaries (~2 min)
 npm run dev         # Vite dev server (static pages work; /api falls back to the static index)
 npm run check       # type-check the app and the worker
+npm test            # verify result caching and REST/MCP behavior without remote D1 calls
 npm run preview     # production build served by wrangler dev, with the API
 ```
 
@@ -47,6 +48,8 @@ Cloudflare Workers with static assets and a D1 database named `dynasty`, configu
 npm run d1:import   # load data/d1/*.sql into D1 (drops and recreates the tables)
 npm run deploy      # build and deploy the worker
 ```
+
+The Worker caches shared REST/MCP data results and sitemaps for up to a day and rendered HTML for an hour using Cloudflare's Cache API. Each deployment gets a new cache namespace. After an in-place D1 update, bump `CACHE_VERSION` in `wrangler.jsonc` and deploy to invalidate Worker-cached results. See [result caching](docs/api.md#result-caching) for cache status headers and browser-cache limits.
 
 ### Data Sources
 

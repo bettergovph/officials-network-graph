@@ -74,7 +74,8 @@ export async function renderPage(request: Request, env: Env, url: URL): Promise<
     const res = await env.ASSETS.fetch(request);
     if (!(res.headers.get('content-type') ?? '').includes('text/html')) return res;
     let seo: Seo;
-    try { seo = await seoFor(url, env.DB); } catch { seo = { title: `${BRAND}`, description: DEFAULT_DESC, canonical: SITE + url.pathname }; }
+    let failed = false;
+    try { seo = await seoFor(url, env.DB); } catch { failed = true; seo = { title: `${BRAND}`, description: DEFAULT_DESC, canonical: SITE + url.pathname }; }
     const head = [`<link rel="canonical" href="${esc(seo.canonical)}">`, `<meta name="twitter:card" content="summary_large_image">`, `<meta name="twitter:title" content="${esc(seo.title)}">`, `<meta name="twitter:description" content="${esc(seo.description)}">`, seo.jsonld ? `<script type="application/ld+json">${JSON.stringify(seo.jsonld).replace(/</g, '\\u003c')}</script>` : ''].join('');
     const out = new HTMLRewriter()
         .on('title', { element(e) { e.setInnerContent(seo.title); } })
@@ -86,7 +87,7 @@ export async function renderPage(request: Request, env: Env, url: URL): Promise<
         .on('head', { element(e) { e.append(head, { html: true }); } })
         .on('main#view', { element(e) { if (seo.body) e.setInnerContent(seo.body, { html: true }); } })
         .transform(res);
-    const h = new Headers(out.headers); h.set('cache-control', 'public, max-age=600, s-maxage=3600'); h.set('vary', 'accept-encoding');
+    const h = new Headers(out.headers); h.set('cache-control', failed || seo.status === 404 ? 'no-store' : 'public, max-age=600, s-maxage=3600'); h.set('vary', 'accept-encoding');
     return new Response(out.body, { status: seo.status ?? out.status, headers: h });
 }
 

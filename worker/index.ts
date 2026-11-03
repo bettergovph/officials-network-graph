@@ -5,8 +5,14 @@
  * Read-only. Responses carry the data vintage and the source citation.
  */
 import { renderPage, sitemap, robots } from './seo';
+import { ResultCache } from './cache';
 
-export interface Env { DB: D1Database; ASSETS: Fetcher }
+export interface Env {
+    DB: D1Database;
+    ASSETS: Fetcher;
+    WORKER_VERSION?: { id: string };
+    CACHE_VERSION?: string;
+}
 
 const VERSION = '1.0.0';
 const API_HOST = 'officials.bettergov.ph'; // API and MCP live here; the site lives on SITE_HOST. The workers.dev host serves both.
@@ -33,8 +39,16 @@ async function getVintage(env: Env): Promise<{ built: string; years: number[] }>
         const body = res.headers.get('content-encoding') === 'gzip' ? res.body : res.body!.pipeThrough(new DecompressionStream('gzip'));
         const idx = JSON.parse(await new Response(body).text()) as { built: string; years: number[] };
         vintage = { built: idx.built, years: idx.years };
-    } catch { vintage = { built: 'unknown', years: [] }; }
+    } catch { return { built: 'unknown', years: [] }; }
     return vintage;
+}
+
+async function resultCache(url: URL, env: Env, ctx: ExecutionContext): Promise<ResultCache> {
+    const v = await getVintage(env);
+    // Missing release metadata disables caching instead of sharing an unsafe fallback key.
+    const revision = env.WORKER_VERSION?.id && v.built !== 'unknown'
+        ? JSON.stringify([env.WORKER_VERSION.id, env.CACHE_VERSION ?? '1', v.built]) : null;
+    return new ResultCache(url.origin, revision, ctx);
 }
 
 // ---------- data access (shared by REST and MCP) ----------
@@ -74,7 +88,7 @@ async function districtTowns(db: D1Database, ids: string[]): Promise<Map<string,
     return out;
 }
 
-const api = {
+const dataApi = {
     async stats(db: D1Database) {
         return first(db, `SELECT (SELECT COUNT(*) FROM persons) persons, (SELECT COUNT(*) FROM candidacies) candidacies, (SELECT COUNT(*) FROM contests) contests, (SELECT COUNT(*) FROM regions) regions, (SELECT COUNT(*) FROM provinces) provinces, (SELECT COUNT(*) FROM cities) cities, (SELECT COUNT(*) FROM blocs WHERE scope_year = 0) blocs_all_years, (SELECT MIN(year) FROM contests) first_year, (SELECT MAX(year) FROM contests) last_year`);
     },
@@ -130,6 +144,10 @@ const api = {
             ? `SELECT ${PERSON_COLS} FROM persons p JOIN provinces pr ON pr.id = p.home_province_id WHERE ((p.last_key LIKE ?1 AND p.first_key LIKE ?2) OR (p.last_key LIKE ?3 AND p.first_key LIKE ?4)) ${provClause} ORDER BY p.wins DESC, p.runs DESC LIMIT ?5`
             : `SELECT ${PERSON_COLS} FROM persons p JOIN provinces pr ON pr.id = p.home_province_id WHERE p.last_key LIKE ?1 ${provClause} ORDER BY p.wins DESC, p.runs DESC LIMIT ?2`;
         return all(db, sql, ...(firstN ? [last + '%', firstN + '%', firstN + '%', last + '%', limit] : [last + '%', limit]));
+    },
+    async searchPlaces(db: D1Database, q: string) {
+        const like = '%' + slugOf(q) + '%';
+        return all(db, `SELECT 'province' AS type, name, slug, NULL AS province_slug FROM provinces WHERE slug LIKE ?1 UNION ALL SELECT 'city', c.name, c.slug, p.slug FROM cities c JOIN provinces p ON p.id = c.province_id WHERE c.slug LIKE ?1 LIMIT 10`, like);
     },
     async persons(db: D1Database, f: { province?: string | null; min_runs?: string | number | null; sort?: string | null; page?: number; limit?: number }) {
         const limit = clampInt(f.limit, 50, 1, 200), page = clampInt(f.page, 1, 1, 100000), minRuns = clampInt(f.min_runs, 1, 1, 30);
@@ -193,15 +211,29 @@ const api = {
     },
 };
 
+// One cache entry per data operation and parsed arguments, independent of REST/MCP
+// envelopes, query-string ordering, and unused query parameters. Keep internal method
+// calls on dataApi so an assembled result needs only one cache lookup on a hit.
+function cachedApi(cache: ResultCache): typeof dataApi {
+    return new Proxy(dataApi, {
+        get(target, property, receiver) {
+            const method = Reflect.get(target, property, receiver);
+            if (typeof method !== 'function') return method;
+            return (...args: unknown[]) => cache.json(String(property), args.slice(1), async () => Reflect.apply(method, target, args));
+        },
+    });
+}
+
 // ---------- REST ----------
-const HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600, s-maxage=86400', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version' };
+const HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600, s-maxage=86400', 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-result-cache', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version' };
 async function envelope(env: Env, data: unknown, status = 200) {
     const v = await getVintage(env);
     return new Response(JSON.stringify({ data, meta: { api_version: VERSION, data_vintage: v.built, elections: v.years, source: SOURCE, license: LICENSE, docs: DOCS } }), { status, headers: HEADERS });
 }
 const errorResponse = (e: unknown) => { const status = e instanceof ApiError ? e.status : 500; return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e), status }), { status, headers: { ...HEADERS, 'cache-control': 'no-store' } }); };
 
-async function rest(url: URL, env: Env): Promise<Response> {
+async function rest(url: URL, env: Env, cache: ResultCache): Promise<Response> {
+    const api = cachedApi(cache);
     const db = env.DB, q = url.searchParams;
     const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
     const v1 = parts[0] === 'v1'; if (v1) parts.shift();
@@ -218,7 +250,7 @@ async function rest(url: URL, env: Env): Promise<Response> {
         case 'blocs': return envelope(env, a ? await api.bloc(db, clampInt(a, 0, 1, 1e9)) : await api.blocs(db, { year: q.get('year'), province: q.get('province'), region: q.get('region'), min: q.get('min'), surname: q.get('surname'), page, limit, withMembers: q.get('members') === '1' }));
         case 'compare': if (!q.get('province') || !q.get('position')) throw new ApiError(400, 'province and position required'); return envelope(env, await api.compare(db, { province: q.get('province')!, town: q.get('town'), position: q.get('position')!, district: q.get('district') }));
         // legacy routes used by the site
-        case 'search': { const s = q.get('q') ?? ''; if (s.trim().length < 2) return new Response(JSON.stringify({ persons: [], places: [] }), { headers: HEADERS }); const persons = await api.searchPersons(db, s, null, clampInt(q.get('limit'), 20, 1, 50)); const like = '%' + slugOf(s) + '%'; const places = await all(db, `SELECT 'province' AS type, name, slug, NULL AS province_slug FROM provinces WHERE slug LIKE ?1 UNION ALL SELECT 'city', c.name, c.slug, p.slug FROM cities c JOIN provinces p ON p.id = c.province_id WHERE c.slug LIKE ?1 LIMIT 10`, like); return new Response(JSON.stringify({ persons, places }), { headers: HEADERS }); }
+        case 'search': { const s = q.get('q') ?? ''; if (s.trim().length < 2) return new Response(JSON.stringify({ persons: [], places: [] }), { headers: HEADERS }); const persons = await api.searchPersons(db, s, null, clampInt(q.get('limit'), 20, 1, 50)); const places = await api.searchPlaces(db, s); return new Response(JSON.stringify({ persons, places }), { headers: HEADERS }); }
         case 'person': if (!a) throw new ApiError(400, 'id required'); return new Response(JSON.stringify(await api.person(db, a)), { headers: HEADERS });
         case 'contest': if (!a) throw new ApiError(400, 'id required'); return new Response(JSON.stringify(await api.contest(db, a)), { headers: HEADERS });
         case 'place': if (!a) throw new ApiError(400, 'province required'); { const r = await api.contests(db, { province: a, town: b, year: q.get('year'), page: 1, limit: 200, withCandidates: true }); return new Response(JSON.stringify(r), { headers: HEADERS }); }
@@ -237,7 +269,7 @@ const TOOLS = [
     { name: 'get_national_results', description: 'President, vice president, senate and party-list totals for an election year, nationally or for one province.', inputSchema: { type: 'object', properties: { year: { type: 'integer' }, province: { type: 'string' } }, required: ['year'] } },
     { name: 'get_coverage', description: 'What the data covers per election and its known gaps (which years have votes, how people are matched). Check this before quoting numbers for 2001-2013.', inputSchema: { type: 'object', properties: {} } },
 ];
-async function callTool(env: Env, name: string, a: Record<string, unknown>): Promise<unknown> {
+async function callTool(env: Env, name: string, a: Record<string, unknown>, api: typeof dataApi): Promise<unknown> {
     const db = env.DB; const str = (k: string) => (a[k] == null ? null : String(a[k]));
     switch (name) {
         case 'search_officials': return { persons: await api.searchPersons(db, str('query') ?? '', str('province'), clampInt(a['limit'] as number, 20, 1, 50)) };
@@ -252,8 +284,9 @@ async function callTool(env: Env, name: string, a: Record<string, unknown>): Pro
     }
 }
 type JsonRpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, unknown> };
-async function mcp(request: Request, env: Env): Promise<Response> {
-    const mcpHeaders = { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version', 'cache-control': 'no-store' };
+async function mcp(request: Request, env: Env, cache: ResultCache): Promise<Response> {
+    const api = cachedApi(cache);
+    const mcpHeaders = { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-result-cache', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version', 'cache-control': 'no-store' };
     if (request.method === 'GET') return new Response(JSON.stringify({ name: 'dynasties', transport: 'streamable-http', note: 'POST JSON-RPC 2.0 here. Server-sent events are not used.' }), { status: 405, headers: mcpHeaders });
     if (request.method !== 'POST') return new Response(null, { status: 405, headers: mcpHeaders });
     let body: JsonRpc | JsonRpc[];
@@ -270,7 +303,7 @@ async function mcp(request: Request, env: Env): Promise<Response> {
                 case 'tools/list': return reply({ tools: TOOLS });
                 case 'tools/call': {
                     const name = String(m.params?.['name'] ?? ''), args = (m.params?.['arguments'] as Record<string, unknown>) ?? {};
-                    try { const data = await callTool(env, name, args); const payload = { data, source: SOURCE, data_vintage: v.built }; return reply({ content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload }); }
+                    try { const data = await callTool(env, name, args, api); const payload = { data, source: SOURCE, data_vintage: v.built }; return reply({ content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload }); }
                     catch (e) { return reply({ content: [{ type: 'text', text: e instanceof Error ? e.message : String(e) }], isError: true }); }
                 }
                 default: return fail(-32601, `method not found: ${m.method}`);
@@ -283,23 +316,43 @@ async function mcp(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const url = new URL(request.url);
         if (request.method === 'OPTIONS' && (url.pathname.startsWith('/api') || url.pathname === '/mcp')) return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type, accept, mcp-session-id, mcp-protocol-version', 'access-control-max-age': '86400' } });
-        if (url.pathname === '/mcp' || url.pathname === '/mcp/') return mcp(request, env);
+        if (url.pathname === '/mcp' || url.pathname === '/mcp/') {
+            const cache = await resultCache(url, env, ctx);
+            return cache.annotate(await mcp(request, env, cache));
+        }
         if (url.hostname === API_HOST && !url.pathname.startsWith('/api')) {
             // The API host has no pages: its root is the endpoint index, everything else goes to the site.
-            if (url.pathname === '/' || url.pathname === '') return rest(new URL('/api/v1', url), env);
+            if (url.pathname === '/' || url.pathname === '') {
+                const cache = await resultCache(url, env, ctx);
+                return cache.annotate(await rest(new URL('/api/v1', url), env, cache));
+            }
             return Response.redirect(`https://${SITE_HOST}${url.pathname}${url.search}`, 302);
         }
         if (!url.pathname.startsWith('/api')) {
             if (url.pathname === '/robots.txt') return robots();
-            if (url.pathname.startsWith('/sitemap')) { try { const r = await sitemap(url, env, (await getVintage(env)).built); return r ?? new Response('not found', { status: 404 }); } catch (e) { return errorResponse(e); } }
+            if (url.pathname.startsWith('/sitemap')) {
+                try {
+                    const produce = async () => (await sitemap(url, env, (await getVintage(env)).built)) ?? new Response('not found', { status: 404 });
+                    if (request.method !== 'GET') return await produce();
+                    const cache = await resultCache(url, env, ctx);
+                    return await cache.response('sitemap', url.pathname, produce);
+                } catch (e) { return errorResponse(e); }
+            }
             // Pages: rewrite index.html per URL with title, description, canonical, JSON-LD and a crawlable summary.
-            if (request.method === 'GET' && !url.pathname.startsWith('/data/') && !url.pathname.startsWith('/assets/') && !/\.[a-z0-9]{2,5}$/i.test(url.pathname)) return renderPage(request, env, url);
+            if (request.method === 'GET' && !url.pathname.startsWith('/data/') && !url.pathname.startsWith('/assets/') && !/\.[a-z0-9]{2,5}$/i.test(url.pathname)) {
+                const cache = await resultCache(url, env, ctx);
+                // Preserve query parameters: some page metadata includes the query string.
+                return cache.response('html', url.pathname + url.search, () => renderPage(request, env, url));
+            }
             return env.ASSETS.fetch(request);
         }
         if (request.method !== 'GET') return errorResponse(new ApiError(405, 'method not allowed'));
-        try { return await rest(url, env); } catch (e) { return errorResponse(e); }
+        try {
+            const cache = await resultCache(url, env, ctx);
+            return cache.annotate(await rest(url, env, cache));
+        } catch (e) { return errorResponse(e); }
     },
 } satisfies ExportedHandler<Env>;
