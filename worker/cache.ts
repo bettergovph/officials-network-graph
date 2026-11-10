@@ -16,6 +16,7 @@ function stableKey(value: unknown): string {
 export class ResultCache {
     private hits = 0;
     private misses = 0;
+    private staticResults = 0;
     private origin: string;
     private revision: string | null;
     private ctx: ExecutionContext;
@@ -25,6 +26,8 @@ export class ResultCache {
         this.revision = revision;
         this.ctx = ctx;
     }
+
+    markStatic() { this.staticResults++; }
 
     private async key(kind: string, args: unknown): Promise<Request | null> {
         if (!this.revision) return null;
@@ -83,6 +86,10 @@ export class ResultCache {
     annotate(response: Response): Response {
         const headers = new Headers(response.headers);
         headers.set('x-result-cache', this.hits ? (this.misses ? 'MIXED' : 'HIT') : (this.misses ? 'MISS' : 'BYPASS'));
+        if (this.staticResults) {
+            headers.set('x-result-cache', this.hits || this.misses ? 'MIXED' : 'STATIC');
+            headers.set('x-data-source', this.hits || this.misses ? 'mixed' : 'static');
+        }
         return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     }
 }

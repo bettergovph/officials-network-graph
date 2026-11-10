@@ -39,6 +39,8 @@ function cached<T>(url: string): Promise<T> {
 export const loadIndex = () => cached<IndexData>('/data/index.json.gz');
 export const loadProvince = (slug: string) => cached<ProvShard>(`/data/prov/${slug}.json.gz`);
 export const loadPeople = (letter: string) => cached<PeopleRow[]>(`/data/people/${letter}.json.gz`);
+export type SnapshotPeopleRow = [...PeopleRow, firstYear: number];
+export const loadSnapshotPeople = (letter: string) => cached<{ data: SnapshotPeopleRow[] }>(`/data/snapshots/search/${letter}.json.gz`).then(snapshot => snapshot.data);
 export const loadNational = (year: number | string) => cached<NationalData>(`/data/national/${year}.json.gz`);
 
 export function findProvince(index: IndexData, slug: string): { region: PlaceRegion; province: PlaceProvince } | null {

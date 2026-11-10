@@ -5,6 +5,8 @@
  * towns and national results, and serves sitemaps and robots.txt from D1.
  */
 import type { Env } from './index';
+import { ApiError } from './params';
+import { seoSnapshot, sitemapSnapshot } from './snapshots';
 
 const SITE = 'https://dynasties.bettergov.ph';
 const BRAND = 'Dynasties by BetterGov.ph';
@@ -15,9 +17,9 @@ const POS: Record<string, string> = { 'MEMBER, HOUSE OF REPRESENTATIVES': 'Repre
 const posLabel = (p: string) => POS[p] ?? title(p);
 type Row = Record<string, unknown>;
 
-interface Seo { title: string; description: string; canonical: string; jsonld?: unknown; body?: string; noindex?: boolean; status?: number }
+export interface Seo { title: string; description: string; canonical: string; jsonld?: unknown; body?: string; noindex?: boolean; status?: number }
 
-async function seoFor(url: URL, db: D1Database): Promise<Seo> {
+export async function seoFor(url: URL, db: D1Database): Promise<Seo> {
     const path = url.pathname.replace(/\/+$/, '') || '/';
     const canonical = SITE + path + (path === '/regional' && url.search ? url.search : '');
     const base: Seo = { title: `${BRAND}: the political map of the Philippines, 2001–2025`, description: DEFAULT_DESC, canonical };
@@ -42,9 +44,9 @@ async function seoFor(url: URL, db: D1Database): Promise<Seo> {
         return { ...base, title: `${name} elections 2001–2025: governors, mayors, representatives · ${BRAND}`, description: desc, jsonld: { '@context': 'https://schema.org', '@type': 'AdministrativeArea', name, url: canonical, containedInPlace: { '@type': 'AdministrativeArea', name: String(p['region']) } }, body: `<div class="page"><h1>${esc(name)}</h1><p>${esc(desc)}</p><h2>Governors</h2><ul>${gov.results.map(g => `<li>${g['year']}: <a href="/person/${esc(p['slug'])}/${esc(g['pid'])}">${esc(title(String(g['display_name'])))}</a></li>`).join('')}</ul><h2>Cities and towns</h2><ul>${towns.results.map(t => `<li><a href="/province/${esc(p['slug'])}/${esc(t['slug'])}">${esc(title(String(t['name'])))}</a></li>`).join('')}</ul></div>` };
     }
     if ((m = path.match(/^\/province\/([^/]+)\/([^/]+)$/))) {
-        const c = await db.prepare(`SELECT c.id, c.name, c.slug, p.name AS province, p.slug AS pslug, r.name AS region FROM cities c JOIN provinces p ON p.id = c.province_id JOIN regions r ON r.id = p.region_id WHERE p.slug = ?1 AND c.slug = ?2`).bind(m[1], m[2]).first<Row>();
+        const c = await db.prepare(`SELECT c.id, c.province_id, c.name, c.slug, p.name AS province, p.slug AS pslug, r.name AS region FROM cities c JOIN provinces p ON p.id = c.province_id JOIN regions r ON r.id = p.region_id WHERE p.slug = ?1 AND c.slug = ?2`).bind(m[1], m[2]).first<Row>();
         if (!c) return { ...base, noindex: true, status: 404, title: `Town not found · ${BRAND}` };
-        const mayors = await db.prepare(`SELECT c.year, c.position, pe.display_name, pe.id AS pid FROM candidacies c JOIN persons pe ON pe.id = c.person_id WHERE c.city_id = ?1 AND c.position IN ('MAYOR','VICE MAYOR') AND c.won = 1 ORDER BY c.year DESC, c.position`).bind(c['id']).all<Row>();
+        const mayors = await db.prepare(`SELECT c.year, c.position, pe.display_name, pe.id AS pid FROM candidacies c JOIN persons pe ON pe.id = c.person_id WHERE c.province_id = ?1 AND c.city_id = ?2 AND c.position IN ('MAYOR','VICE MAYOR') AND c.won = 1 ORDER BY c.year DESC, c.position`).bind(c['province_id'], c['id']).all<Row>();
         const name = title(String(c['name'])), prov = title(String(c['province']));
         const desc = `${name}, ${prov}: mayors, vice mayors and councilors elected from 2001 to 2025 with votes, margins and results, plus the representative and board seats the town votes for.`;
         return { ...base, title: `${name}, ${prov}: election results 2001–2025 · ${BRAND}`, description: desc, jsonld: { '@context': 'https://schema.org', '@type': 'City', name, url: canonical, containedInPlace: { '@type': 'AdministrativeArea', name: prov } }, body: `<div class="page"><h1>${esc(name)}, <a href="/province/${esc(c['pslug'])}">${esc(prov)}</a></h1><p>${esc(desc)}</p><h2>Mayors and vice mayors</h2><ul>${mayors.results.map(g => `<li>${g['year']} ${esc(posLabel(String(g['position'])))}: <a href="/person/${esc(c['pslug'])}/${esc(g['pid'])}">${esc(title(String(g['display_name'])))}</a></li>`).join('')}</ul></div>` };
@@ -75,7 +77,12 @@ export async function renderPage(request: Request, env: Env, url: URL): Promise<
     if (!(res.headers.get('content-type') ?? '').includes('text/html')) return res;
     let seo: Seo;
     let failed = false;
-    try { seo = await seoFor(url, env.DB); } catch { failed = true; seo = { title: `${BRAND}`, description: DEFAULT_DESC, canonical: SITE + url.pathname }; }
+    try { seo = env.STATIC_DATA === '1' ? await seoSnapshot(env.ASSETS, url) : await seoFor(url, env.DB); }
+    catch (error) {
+        failed = true;
+        const status = error instanceof ApiError && error.status === 404 ? 404 : env.STATIC_DATA === '1' ? 503 : undefined;
+        seo = { title: status === 404 ? `Page not found · ${BRAND}` : BRAND, description: DEFAULT_DESC, canonical: SITE + url.pathname, status, noindex: true };
+    }
     const head = [`<link rel="canonical" href="${esc(seo.canonical)}">`, `<meta name="twitter:card" content="summary_large_image">`, `<meta name="twitter:title" content="${esc(seo.title)}">`, `<meta name="twitter:description" content="${esc(seo.description)}">`, seo.jsonld ? `<script type="application/ld+json">${JSON.stringify(seo.jsonld).replace(/</g, '\\u003c')}</script>` : ''].join('');
     const out = new HTMLRewriter()
         .on('title', { element(e) { e.setInnerContent(seo.title); } })
@@ -88,12 +95,14 @@ export async function renderPage(request: Request, env: Env, url: URL): Promise<
         .on('main#view', { element(e) { if (seo.body) e.setInnerContent(seo.body, { html: true }); } })
         .transform(res);
     const h = new Headers(out.headers); h.set('cache-control', failed || seo.status === 404 ? 'no-store' : 'public, max-age=600, s-maxage=3600'); h.set('vary', 'accept-encoding');
+    if (env.STATIC_DATA === '1' && !failed) h.set('x-data-source', 'static');
     return new Response(out.body, { status: seo.status ?? out.status, headers: h });
 }
 
 const PERSONS_PER_SITEMAP = 40000;
 const xml = (body: string) => new Response(`<?xml version="1.0" encoding="UTF-8"?>\n${body}`, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
 export async function sitemap(url: URL, env: Env, vintage: string): Promise<Response | null> {
+    if (env.STATIC_DATA === '1') return sitemapSnapshot(env.ASSETS, url);
     const db = env.DB;
     if (url.pathname === '/sitemap.xml') {
         const n = Number((await db.prepare(`SELECT COUNT(*) n FROM persons`).first<Row>())?.['n'] ?? 0);

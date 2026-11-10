@@ -7,7 +7,7 @@
   "observability": { "enabled": true },
   "version_metadata": { "binding": "WORKER_VERSION" },
   // Bump after an in-place D1 data update. Every deployment also gets a fresh cache namespace.
-  "vars": { "CACHE_VERSION": "1" },
+  "vars": { "CACHE_VERSION": "1", "STATIC_DATA": "1" },
   "workers_dev": true,
   // Custom domains. officials.bettergov.ph is still attached to the older "officials" worker; detach it there
   // (or delete that worker) before uncommenting, otherwise the deploy fails.

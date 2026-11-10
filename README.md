@@ -22,7 +22,8 @@ A *bloc* is the set of officials in one province who carry a surname as last nam
   - `public/data/**`: gzipped shards the site loads on demand (committed, about 17 MB);
   - `docs/coverage.md`: coverage report.
 - `scripts/build-geo.ts` (`npm run geo`, also run by `npm run data`) downloads PSGC 2023 boundaries from [philippines-json-maps](https://github.com/faeldon/philippines-json-maps), matches them to our provinces and towns, simplifies them, and writes `public/data/geo/`.
-- The site is a Vite + TypeScript single-page app (`src/`) using [D3](https://d3js.org/) and [Leaflet](https://leafletjs.com/) with OpenStreetMap tiles. Pages read the static shards; search uses the API when deployed and falls back to a static index otherwise.
+- The site is a Vite + TypeScript single-page app (`src/`) using [D3](https://d3js.org/) and [Leaflet](https://leafletjs.com/) with OpenStreetMap tiles. Browsing and search read static JSON shards. Server-rendered page summaries also use generated JSON, including every politician's page, so browsing does not query D1 even on a cold edge cache.
+- `scripts/build-snapshots.mjs` reads the existing local SQLite database without modifying it and generates `public/data/snapshots/`: API summaries, province/town and national results, first-page leaderboards, browser search records, page summaries, and XML sitemaps. The committed snapshots are deployed with the other static assets. `npm run build` verifies their checksums and source/data versions before bundling.
 - `worker/index.ts` is a Cloudflare Worker serving the built site and a small JSON API over D1 (`/api/search`, `/api/person/:id`, `/api/contest/:id`, `/api/place/:province[/:city]`, `/api/persons`, `/api/stats`).
 
 ### API and MCP
@@ -34,7 +35,8 @@ The same Worker serves a read-only JSON API under `/api/v1` and a Model Context 
 ```bash
 npm install
 npm run data        # download sources, build data/dynasty.sqlite, data/d1, public/data, docs/coverage.md, then boundaries (~2 min)
-npm run dev         # Vite dev server (static pages work; /api falls back to the static index)
+npm run data:snapshots # regenerate snapshots from the existing local SQLite database; no downloads or D1 calls
+npm run dev         # Vite dev server (browsing and search use static files)
 npm run check       # type-check the app and the worker
 npm test            # verify result caching and REST/MCP behavior without remote D1 calls
 npm run preview     # production build served by wrangler dev, with the API
@@ -49,7 +51,7 @@ npm run d1:import   # load data/d1/*.sql into D1 (drops and recreates the tables
 npm run deploy      # build and deploy the worker
 ```
 
-The Worker caches shared REST/MCP data results and sitemaps for up to a day and rendered HTML for an hour using Cloudflare's Cache API. Each deployment gets a new cache namespace. After an in-place D1 update, bump `CACHE_VERSION` in `wrangler.jsonc` and deploy to invalidate Worker-cached results. See [result caching](docs/api.md#result-caching) for cache status headers and browser-cache limits.
+With `STATIC_DATA=1`, stable REST/MCP operations, all server-rendered pages, browser search and sitemaps use generated files. Flexible API filters and direct API searches still use D1 with the existing result cache. Snapshots persist until rebuilt; edge cache expiry never causes these static routes to query D1. To publish data changes, update the matching local SQLite database and browser dataset, run `npm run data:snapshots`, include the generated files, and deploy alongside the D1 update. Changing `CACHE_VERSION` alone does not refresh static data. See [static snapshots](docs/api.md#static-snapshots) for coverage and verification headers.
 
 ### Data Sources
 

@@ -1,12 +1,31 @@
 # Dynasties API and MCP server
 
-Base URL: `https://officials.bettergov.ph` (the site itself is at `https://dynasties.bettergov.ph`; the same routes also answer there). Read-only, no authentication, CORS open. Successful data results are cached at the edge for up to a day; the data changes once per election.
+Base URL: `https://dynasties.bettergov.ph`. Read-only, no authentication, CORS open. Stable responses are published as JSON snapshots; dynamic results are cached at the edge for up to a day. The data changes once per election. `officials.bettergov.ph` is still attached to an older, separate Worker and does not receive this deployment.
+
+## Static snapshots
+
+When `STATIC_DATA=1` is configured, these operations read generated JSON assets instead of D1, even on the first request from a new Cloudflare data center:
+
+- Stats, coverage, the place directory, and every province/town summary.
+- National results for every available election, nationally and per province.
+- The first page of the wins, runs and losses leaderboards, nationally and per province, with the default `min_runs=1` and any supported limit (1–200).
+- The matching MCP tools (`get_coverage` and `get_national_results`).
+
+The website also reads JSON for every server-rendered page, including all 175,720 politician summaries. Politician summaries are split into 4,096 small files by person-id prefix. Browser search uses letter-sharded JSON and does not call the search API. Sitemaps are generated XML files. These artifacts are available to every location through the Assets binding and have no expiry that causes a D1 query.
+
+Responses from static API operations carry `X-Result-Cache: STATIC` and `X-Data-Source: static`. Rendered pages and sitemaps carry `X-Data-Source: static`; their `X-Result-Cache` header still describes the HTML/XML edge cache. Mixed MCP batches can report `MIXED`. Unknown static places, pages and elections return 404 without D1. Missing or incompatible snapshot files return 503 rather than silently returning to billable database queries.
+
+Direct API search, individual person/contest API records, contest filters, blocs, election comparisons, later leaderboard pages and custom minimum-run filters continue to use D1 and the result cache below. The site does not use these dynamic APIs for ordinary browsing or search.
+
+Generate files with `npm run data:snapshots`, using the existing `data/dynasty.sqlite` and matching `public/data/index.json.gz`. The generator opens SQLite read-only and uses the same query/SEO functions as the Worker. Commit the generated `public/data/snapshots/` files with the code. Normal builds require no database: `npm run snapshots:check` checks artifact hashes, data-index identity and generator/query source identity, and is part of `npm run build`. Tests use committed files; additional SQLite parity checks run when the local database is available.
+
+After changing data, regenerate the browser dataset and snapshots and deploy with the matching D1 import. Deploying code or bumping `CACHE_VERSION` invalidates edge results but does **not** regenerate snapshots. The existing import replaces D1 tables in place, so coordinate the import and deployment. Browser cache lifetimes still apply.
 
 ## Result caching
 
-The Worker uses Cloudflare's Cache API before querying D1. REST (including legacy routes) and MCP share entries for the same data operation and parsed arguments on the same hostname. Query-string ordering and unused parameters do not affect these entries. Search caches both the people and place lookups. MCP caches only tool data: each response retains the current request's JSON-RPC id and `Cache-Control: no-store`.
+For dynamic operations, the Worker uses Cloudflare's Cache API before querying D1. REST (including legacy routes) and MCP share entries for the same data operation and parsed arguments on the same hostname. Query-string ordering and unused parameters do not affect these entries. Direct API search caches both the people and place lookups. MCP caches only tool data: each response retains the current request's JSON-RPC id and `Cache-Control: no-store`.
 
-Data results and sitemaps have a 24-hour edge TTL; rendered HTML has a one-hour edge TTL. Cache contents are local to a Cloudflare data center and may be evicted sooner, so a miss still queries D1. Simultaneous cold requests can also query D1 independently. There is no KV or additional storage service.
+Data results and sitemaps have a 24-hour edge TTL; rendered HTML has a one-hour edge TTL. Cache contents are local to a Cloudflare data center and may be evicted sooner. A miss for a dynamic data operation queries D1; static routes continue to use generated assets. Simultaneous cold requests for dynamic operations can also query D1 independently. There is no KV or additional storage service.
 
 Responses include `X-Result-Cache`: `HIT` when all performed lookups hit, `MISS` when all missed, `MIXED` when some hit and some missed (for example a search or MCP batch), and `BYPASS` when no cache lookup was performed. Errors, 404 pages, and generic HTML returned after a database failure are not stored. Cache read/write failures fall back to normal request handling.
 
